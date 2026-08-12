@@ -8,6 +8,9 @@ export type SiteImageKey = "hero_main" | "hero_side_1" | "hero_side_2" | "about_
 export type SiteImagesMap = Partial<Record<SiteImageKey, string>>;
 
 export function siteImageUrl(path: string): string {
+  if (path.startsWith("http://") || path.startsWith("https://")) {
+    return path;
+  }
   return `${STORAGE_URL}/storage/${path}`;
 }
 

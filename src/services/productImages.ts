@@ -5,6 +5,9 @@ const API_URL = import.meta.env.VITE_API_URL as string;
 const STORAGE_URL = API_URL.replace(/\/api\/?$/, "");
 
 export function imageUrl(path: string): string {
+  if (path.startsWith("http://") || path.startsWith("https://")) {
+    return path;
+  }
   return `${STORAGE_URL}/storage/${path}`;
 }
 
