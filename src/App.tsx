@@ -336,49 +336,65 @@ export default function WiseSole() {
       </div>
 
       {/* HERO */}
-      <section className="relative">
-        <div className="max-w-[1440px] mx-auto px-5 md:px-10 pt-10 md:pt-16 pb-8">
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-8 items-stretch">
-            <div className="md:col-span-7 relative overflow-hidden bg-[#0a0a0a] min-h-[420px] md:min-h-[620px] flex items-end">
-              <img
-                src={siteImages.hero_main ? siteImageUrl(siteImages.hero_main) : "https://picsum.photos/seed/wshero/1200/1400"}
-                alt="Wise Sole collection"
-                className="absolute inset-0 w-full h-full object-cover opacity-80"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
-              <div className="relative z-10 p-7 md:p-10 w-full">
-                <img src={LOGO_WHITE} alt="" className="h-16 md:h-20 w-auto mb-5 opacity-95" />
-                <p className="text-white/85 text-[13px] md:text-[14px] max-w-[380px] mb-6 leading-relaxed">
-                  Your source for premium sneakers, streetwear, and accessories.
-                </p>
-                <div className="flex flex-wrap gap-3">
-                  <a href="/shop" className="bg-white text-black text-[11px] tracking-[0.12em] uppercase px-6 py-3.5 hover:bg-[#F5F5F5] transition-colors duration-200">
-                    Shop Collection
-                  </a>
-                  <a href="#categories" className="border border-white text-white text-[11px] tracking-[0.12em] uppercase px-6 py-3.5 hover:bg-white hover:text-black transition-colors duration-200">
-                    Explore Categories
-                  </a>
+     <section className="relative">
+          <div className="max-w-[1440px] mx-auto px-5 md:px-10 pt-10 md:pt-16 pb-8">
+            <div className="flex flex-col gap-6 md:gap-8">
+              <div className="relative overflow-hidden bg-[#0a0a0a] min-h-[320px] md:min-h-[460px] flex items-end">
+                <img
+  src={siteImages.hero_main ? siteImageUrl(siteImages.hero_main) : `https://picsum.photos/seed/wshero/1600/550`}
+  alt="Wise Sole collection"
+  className="absolute inset-0 w-full h-full object-cover opacity-80"
+/>
+<div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+<div className="relative z-10 p-7 md:p-10 w-full">
+  <img src={LOGO_WHITE} alt="" className="h-16 md:h-20 w-auto mb-5 opacity-95" />
+                  <p className="text-white/85 text-[13px] md:text-[14px] max-w-[380px] mb-6 leading-relaxed">
+                    Your source for premium sneakers, streetwear, and accessories.
+                  </p>
+                  <div className="flex flex-wrap gap-3">
+                    <a
+                      href="/shop"
+                      className="bg-white text-black text-[11px] tracking-[0.12em] uppercase px-6 py-3.5 hover:bg-[#F5F5F5] transition-colors duration-200"
+                    >
+                      Shop Collection
+                    </a>
+                    <a
+                      href="#categories"
+                      className="border border-white text-white text-[11px] tracking-[0.12em] uppercase px-6 py-3.5 hover:bg-white hover:text-black transition-colors duration-200"
+                    >
+                      Explore Categories
+                    </a>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="md:col-span-5 grid grid-rows-2 gap-6 md:gap-8">
-              <div className="relative overflow-hidden bg-[#F5F5F5] min-h-[200px] group">
-                <img src={siteImages.hero_side_1 ? siteImageUrl(siteImages.hero_side_1) : "https://picsum.photos/seed/wshero2/700/500"} alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                <div className="absolute bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-black/60 to-transparent">
-                  <p className="text-white text-[13px] tracking-[0.04em]">The Latest Drop</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+                <div className="relative overflow-hidden bg-[#F5F5F5] aspect-[3/2] group">
+                  <img
+                 src={siteImages.hero_side_1 ? siteImageUrl(siteImages.hero_side_1) : `https://picsum.photos/seed/wshero2/750/500`}
+                    alt=""
+                    loading="lazy"
+                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                  <div className="absolute bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-black/60 to-transparent">
+                    <p className="text-white text-[13px] tracking-[0.04em]">New In</p>
+                  </div>
                 </div>
-              </div>
-              <div className="relative overflow-hidden bg-[#F5F5F5] min-h-[200px] group">
-                <img src={siteImages.hero_side_2 ? siteImageUrl(siteImages.hero_side_2) : "https://picsum.photos/seed/wshero3/700/500"} alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                <div className="absolute bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-black/60 to-transparent">
-                  <p className="text-white text-[13px] tracking-[0.04em]">Accessories, Reconsidered</p>
+                <div className="relative overflow-hidden bg-[#F5F5F5] aspect-[3/2] group">
+                  <img
+                   src={siteImages.hero_side_2 ? siteImageUrl(siteImages.hero_side_2) : `https://picsum.photos/seed/wshero3/750/500`}
+                    alt=""
+                    loading="lazy"
+                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                  <div className="absolute bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-black/60 to-transparent">
+                    <p className="text-white text-[13px] tracking-[0.04em]">The Finishing Touch</p>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
       {/* FEATURED COLLECTION */}
       <section id="featured" className="max-w-[1440px] mx-auto px-5 md:px-10 py-16 md:py-24">
