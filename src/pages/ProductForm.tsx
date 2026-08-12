@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import type { Product, Category, ProductImage } from "../types/product";
 import { createProduct, updateProduct } from "../services/adminProducts";
 import type { ProductFormData, SizeFormRow } from "../services/adminProducts";
-import { uploadProductImages, deleteProductImage, imageUrl } from "../services/productImages";
+import { uploadProductImages, deleteProductImage, reorderProductImages, imageUrl } from "../services/productImages";
 
 interface ProductFormProps {
   product: Product | null; // null = creating a new product, otherwise editing this one
@@ -31,13 +31,15 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Images already saved on the product (only relevant when editing)
   const [existingImages, setExistingImages] = useState<ProductImage[]>(product?.images || []);
-  // Files picked in this session but not yet uploaded
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploadingImages, setUploadingImages] = useState(false);
+  const [reorderingImages, setReorderingImages] = useState(false);
   const [deletingImageId, setDeletingImageId] = useState<number | null>(null);
   const [currentProductId, setCurrentProductId] = useState<number | null>(product?.id ?? null);
+
+  const [draggedExistingIndex, setDraggedExistingIndex] = useState<number | null>(null);
+  const [draggedPendingIndex, setDraggedPendingIndex] = useState<number | null>(null);
 
   const isEditing = product !== null;
 
@@ -62,7 +64,7 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
         is_new: product.is_new,
         sizes: (product.sizes || []).map((s) => ({ size: s.size, stock: String(s.stock) })),
       });
-      setExistingImages(product.images || []);
+      setExistingImages([...(product.images || [])].sort((a, b) => a.sort_order - b.sort_order));
       setCurrentProductId(product.id);
     } else {
       setForm(emptyForm);
@@ -75,7 +77,6 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  // --- Sizes ---
   const addSizeRow = () => {
     setForm((prev) => ({ ...prev, sizes: [...prev.sizes, { size: "", stock: "0" }] }));
   };
@@ -91,7 +92,6 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
     setForm((prev) => ({ ...prev, sizes: prev.sizes.filter((_, i) => i !== index) }));
   };
 
-  // --- Sale price preview ---
   const priceNum = parseFloat(form.price) || 0;
   const saleNum = parseFloat(form.sale_price) || 0;
   const discountPercent =
@@ -100,11 +100,11 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
       : null;
   const saleInvalid = form.sale_price !== "" && saleNum > 0 && priceNum > 0 && saleNum >= priceNum;
 
-  // --- Images ---
   const handleFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      setSelectedFiles(Array.from(e.target.files));
+      setSelectedFiles((prev) => [...prev, ...Array.from(e.target.files!)]);
     }
+    e.target.value = "";
   };
 
   const removeSelectedFile = (index: number) => {
@@ -117,12 +117,65 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
     setDeletingImageId(image.id);
     try {
       const updated = await deleteProductImage(currentProductId, image.id);
-      setExistingImages(updated.images || []);
+      setExistingImages([...(updated.images || [])].sort((a, b) => a.sort_order - b.sort_order));
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to delete image");
     } finally {
       setDeletingImageId(null);
     }
+  };
+
+  const handleExistingDragStart = (index: number) => {
+    setDraggedExistingIndex(index);
+  };
+
+  const handleExistingDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedExistingIndex === null || draggedExistingIndex === index) return;
+
+    setExistingImages((prev) => {
+      const reordered = [...prev];
+      const [moved] = reordered.splice(draggedExistingIndex, 1);
+      reordered.splice(index, 0, moved);
+      return reordered;
+    });
+    setDraggedExistingIndex(index);
+  };
+
+  const handleExistingDragEnd = async () => {
+    setDraggedExistingIndex(null);
+    if (!currentProductId) return;
+    setReorderingImages(true);
+    try {
+      const orderedIds = existingImages.map((img) => img.id);
+      const updated = await reorderProductImages(currentProductId, orderedIds);
+      setExistingImages([...(updated.images || [])].sort((a, b) => a.sort_order - b.sort_order));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to save new image order");
+    } finally {
+      setReorderingImages(false);
+    }
+  };
+
+  const handlePendingDragStart = (index: number) => {
+    setDraggedPendingIndex(index);
+  };
+
+  const handlePendingDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedPendingIndex === null || draggedPendingIndex === index) return;
+
+    setSelectedFiles((prev) => {
+      const reordered = [...prev];
+      const [moved] = reordered.splice(draggedPendingIndex, 1);
+      reordered.splice(index, 0, moved);
+      return reordered;
+    });
+    setDraggedPendingIndex(index);
+  };
+
+  const handlePendingDragEnd = () => {
+    setDraggedPendingIndex(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -204,7 +257,6 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
             />
           </div>
 
-          {/* PRICE + SALE PRICE */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-[11px] tracking-[0.08em] uppercase text-[#6B6B6B] mb-1.5">
@@ -286,7 +338,6 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
             </div>
           </div>
 
-          {/* SIZES */}
           <div>
             <label className="block text-[11px] tracking-[0.08em] uppercase text-[#6B6B6B] mb-1.5">
               Sizes &amp; Stock — optional
@@ -367,62 +418,95 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
             </label>
           </div>
 
-          {/* IMAGES */}
           <div>
             <label className="block text-[11px] tracking-[0.08em] uppercase text-[#6B6B6B] mb-1.5">
               Product Images
             </label>
+            <p className="text-[11px] text-[#6B6B6B] mb-3">
+              Drag any thumbnail to reorder. Whichever image is first becomes the primary photo shown
+              across the site.
+            </p>
 
             {existingImages.length > 0 && (
-              <div className="grid grid-cols-4 gap-3 mb-3">
-                {existingImages.map((img) => (
-                  <div key={img.id} className="relative aspect-square bg-[#F5F5F5] group">
-                    <img
-                      src={imageUrl(img.image_path)}
-                      alt=""
-                      className="w-full h-full object-cover"
-                    />
-                    {img.is_primary && (
-                      <span className="absolute top-1 left-1 bg-black text-white text-[9px] tracking-[0.08em] uppercase px-1.5 py-0.5">
-                        Primary
-                      </span>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteExistingImage(img)}
-                      disabled={deletingImageId === img.id}
-                      className="absolute top-1 right-1 w-6 h-6 flex items-center justify-center bg-white/90 text-[13px] opacity-0 group-hover:opacity-100 transition-opacity duration-200 disabled:opacity-40"
-                      aria-label="Delete image"
+              <div className="mb-4">
+                <p className="text-[10px] tracking-[0.08em] uppercase text-[#6B6B6B] mb-2">
+                  Uploaded {reorderingImages && "· Saving order…"}
+                </p>
+                <div className="grid grid-cols-4 gap-3">
+                  {existingImages.map((img, i) => (
+                    <div
+                      key={img.id}
+                      draggable
+                      onDragStart={() => handleExistingDragStart(i)}
+                      onDragOver={(e) => handleExistingDragOver(e, i)}
+                      onDragEnd={handleExistingDragEnd}
+                      className={`relative aspect-square bg-[#F5F5F5] group cursor-move transition-opacity duration-150 ${
+                        draggedExistingIndex === i ? "opacity-40" : "opacity-100"
+                      }`}
                     >
-                      ×
-                    </button>
-                  </div>
-                ))}
+                      <img
+                        src={imageUrl(img.image_path)}
+                        alt=""
+                        draggable={false}
+                        className="w-full h-full object-cover pointer-events-none"
+                      />
+                      {i === 0 && (
+                        <span className="absolute top-1 left-1 bg-black text-white text-[9px] tracking-[0.08em] uppercase px-1.5 py-0.5">
+                          Primary
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteExistingImage(img)}
+                        disabled={deletingImageId === img.id}
+                        className="absolute top-1 right-1 w-6 h-6 flex items-center justify-center bg-white/90 text-[13px] opacity-0 group-hover:opacity-100 transition-opacity duration-200 disabled:opacity-40"
+                        aria-label="Delete image"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
             {selectedFiles.length > 0 && (
-              <div className="grid grid-cols-4 gap-3 mb-3">
-                {selectedFiles.map((file, i) => (
-                  <div key={i} className="relative aspect-square bg-[#F5F5F5] group">
-                    <img
-                      src={URL.createObjectURL(file)}
-                      alt=""
-                      className="w-full h-full object-cover opacity-80"
-                    />
-                    <span className="absolute top-1 left-1 bg-white/90 text-[9px] tracking-[0.08em] uppercase px-1.5 py-0.5">
-                      Pending
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => removeSelectedFile(i)}
-                      className="absolute top-1 right-1 w-6 h-6 flex items-center justify-center bg-white/90 text-[13px] opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                      aria-label="Remove selected file"
+              <div className="mb-4">
+                <p className="text-[10px] tracking-[0.08em] uppercase text-[#6B6B6B] mb-2">
+                  Pending Upload
+                </p>
+                <div className="grid grid-cols-4 gap-3">
+                  {selectedFiles.map((file, i) => (
+                    <div
+                      key={i}
+                      draggable
+                      onDragStart={() => handlePendingDragStart(i)}
+                      onDragOver={(e) => handlePendingDragOver(e, i)}
+                      onDragEnd={handlePendingDragEnd}
+                      className={`relative aspect-square bg-[#F5F5F5] group cursor-move transition-opacity duration-150 ${
+                        draggedPendingIndex === i ? "opacity-40" : "opacity-100"
+                      }`}
                     >
-                      ×
-                    </button>
-                  </div>
-                ))}
+                      <img
+                        src={URL.createObjectURL(file)}
+                        alt=""
+                        draggable={false}
+                        className="w-full h-full object-cover opacity-80 pointer-events-none"
+                      />
+                      <span className="absolute top-1 left-1 bg-white/90 text-[9px] tracking-[0.08em] uppercase px-1.5 py-0.5">
+                        {existingImages.length === 0 && i === 0 ? "Will be primary" : "Pending"}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeSelectedFile(i)}
+                        className="absolute top-1 right-1 w-6 h-6 flex items-center justify-center bg-white/90 text-[13px] opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                        aria-label="Remove selected file"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -437,7 +521,7 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
               />
             </label>
             <p className="text-[11px] text-[#6B6B6B] mt-1.5">
-              JPG, PNG, or WebP. Max 5MB each. Images upload after you save the product.
+              JPG, PNG, or WebP. Max 5MB each. New images upload after you save the product.
             </p>
           </div>
 
