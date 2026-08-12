@@ -4,6 +4,7 @@ import { createProduct, updateProduct } from "../services/adminProducts";
 import type { ProductFormData, SizeFormRow } from "../services/adminProducts";
 import { uploadProductImages, deleteProductImage, reorderProductImages, imageUrl } from "../services/productImages";
 import { useConfirm } from "../hooks/useConfirm";
+import ImageCropModal from "../components/ImageCropModal";
 
 interface ProductFormProps {
   product: Product | null; // null = creating a new product, otherwise editing this one
@@ -43,7 +44,14 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
   const [draggedPendingIndex, setDraggedPendingIndex] = useState<number | null>(null);
   const { confirm, ConfirmDialog } = useConfirm();
 
+  // Crop flow: a queue of newly-picked files waiting to be cropped one at a time,
+  // plus which pending thumbnail (if any) is being re-cropped after the fact.
+  const [cropQueue, setCropQueue] = useState<File[]>([]);
+  const [reCropIndex, setReCropIndex] = useState<number | null>(null);
+
   const isEditing = product !== null;
+
+  console.log("RENDER — cropQueue:", cropQueue, "length:", cropQueue.length);
 
   useEffect(() => {
     fetch(`${API_URL}/categories`)
@@ -102,13 +110,36 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
       : null;
   const saleInvalid = form.sale_price !== "" && saleNum > 0 && priceNum > 0 && saleNum >= priceNum;
 
-  const handleFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // --- Images: selection now feeds a crop queue instead of going straight to selectedFiles ---
+const handleFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     const fileArray = files ? Array.from(files) : [];
+    console.log("handleFilesSelected fired, files:", fileArray.length);
     if (fileArray.length > 0) {
-      setSelectedFiles((prev) => [...prev, ...fileArray]);
+      setCropQueue((prev) => {
+        console.log("setCropQueue called, prev:", prev.length, "adding:", fileArray.length);
+        return [...prev, ...fileArray];
+      });
     }
     e.target.value = "";
+};
+
+  // Called when the crop modal for a newly-picked file is applied
+  const handleCropApplied = (croppedFile: File) => {
+    setSelectedFiles((prev) => [...prev, croppedFile]);
+    setCropQueue((prev) => prev.slice(1));
+  };
+
+  // Skip cropping this file (don't add it) and move to the next one in the queue
+  const handleCropCancelled = () => {
+    setCropQueue((prev) => prev.slice(1));
+  };
+
+  // Re-cropping an already-selected pending file
+  const handleReCropApplied = (croppedFile: File) => {
+    if (reCropIndex === null) return;
+    setSelectedFiles((prev) => prev.map((f, i) => (i === reCropIndex ? croppedFile : f)));
+    setReCropIndex(null);
   };
 
   const removeSelectedFile = (index: number) => {
@@ -429,7 +460,7 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
               </label>
               <p className="text-[11px] text-[#6B6B6B] mb-3">
                 Drag any thumbnail to reorder. Whichever image is first becomes the primary photo shown
-                across the site.
+                across the site. New photos are cropped to match the site's display ratio before upload.
               </p>
 
               {existingImages.length > 0 && (
@@ -503,6 +534,13 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
                         </span>
                         <button
                           type="button"
+                          onClick={() => setReCropIndex(i)}
+                          className="absolute bottom-1 left-1 right-1 text-center bg-white/90 text-[9px] tracking-[0.08em] uppercase py-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                        >
+                          Adjust
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => removeSelectedFile(i)}
                           className="absolute top-1 right-1 w-6 h-6 flex items-center justify-center bg-white/90 text-[13px] opacity-0 group-hover:opacity-100 transition-opacity duration-200"
                           aria-label="Remove selected file"
@@ -557,6 +595,25 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
           </form>
         </main>
       </div>
+
+      {cropQueue.length > 0 && (
+        <ImageCropModal
+          key={cropQueue[0].name + cropQueue[0].size}
+          file={cropQueue[0]}
+          onCancel={handleCropCancelled}
+          onApply={handleCropApplied}
+        />
+      )}
+
+      {reCropIndex !== null && selectedFiles[reCropIndex] && (
+        <ImageCropModal
+          key={`recrop-${reCropIndex}`}
+          file={selectedFiles[reCropIndex]}
+          onCancel={() => setReCropIndex(null)}
+          onApply={handleReCropApplied}
+        />
+      )}
+
       {ConfirmDialog}
     </>
   );

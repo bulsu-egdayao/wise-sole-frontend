@@ -366,7 +366,7 @@ export default function WiseSole() {
               <div className="relative overflow-hidden bg-[#F5F5F5] min-h-[200px] group">
                 <img src={siteImages.hero_side_1 ? siteImageUrl(siteImages.hero_side_1) : "https://picsum.photos/seed/wshero2/700/500"} alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                 <div className="absolute bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-black/60 to-transparent">
-                  <p className="text-white text-[13px] tracking-[0.04em]">New Arrivals — Fall Drop</p>
+                  <p className="text-white text-[13px] tracking-[0.04em]">The Latest Drop</p>
                 </div>
               </div>
               <div className="relative overflow-hidden bg-[#F5F5F5] min-h-[200px] group">
