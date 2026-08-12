@@ -9,7 +9,9 @@ function quickViewImage(product: Product): string {
   const primary =
     product.images?.find((img) => img.is_primary) || product.images?.[0];
   if (primary) {
-    return `${STORAGE_URL}/storage/${primary.image_path}`;
+    const path = primary.image_path;
+    if (path.startsWith("http://") || path.startsWith("https://")) return path;
+    return `${STORAGE_URL}/storage/${path}`;
   }
   return `https://picsum.photos/seed/wsp${product.id}/900/1100`;
 }

@@ -10,9 +10,9 @@ const API_URL = import.meta.env.VITE_API_URL as string;
 const STORAGE_URL = API_URL.replace(/\/api\/?$/, "");
 
 function imageUrl(path: string, fallbackSeed: string): string {
-  return path
-    ? `${STORAGE_URL}/storage/${path}`
-    : `https://picsum.photos/seed/${fallbackSeed}/900/1100`;
+  if (!path) return `https://picsum.photos/seed/${fallbackSeed}/900/1100`;
+  if (path.startsWith("http://") || path.startsWith("https://")) return path;
+  return `${STORAGE_URL}/storage/${path}`;
 }
 
 interface ProductDetailProps {

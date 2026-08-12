@@ -4,11 +4,18 @@ import type { Product } from "../types/product";
 const API_URL = import.meta.env.VITE_API_URL as string;
 const STORAGE_URL = API_URL.replace(/\/api\/?$/, "");
 
+function resolveImagePath(path: string): string {
+  if (path.startsWith("http://") || path.startsWith("https://")) {
+    return path;
+  }
+  return `${STORAGE_URL}/storage/${path}`;
+}
+
 function productImage(product: Product, fallbackSeed: string): string {
   const primary =
     product.images?.find((img) => img.is_primary) || product.images?.[0];
   if (primary) {
-    return `${STORAGE_URL}/storage/${primary.image_path}`;
+    return resolveImagePath(primary.image_path);
   }
   return `https://picsum.photos/seed/${fallbackSeed}/700/900`;
 }
@@ -17,7 +24,7 @@ function productImageSecondary(product: Product, fallbackSeed: string): string {
   const sorted = [...(product.images || [])].sort((a, b) => a.sort_order - b.sort_order);
   const secondary = sorted.find((img) => !img.is_primary) || sorted[1];
   if (secondary) {
-    return `${STORAGE_URL}/storage/${secondary.image_path}`;
+    return resolveImagePath(secondary.image_path);
   }
   return `https://picsum.photos/seed/${fallbackSeed}b/700/900`;
 }
