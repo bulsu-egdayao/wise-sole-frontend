@@ -13,6 +13,7 @@ import {
 import { siteImageUrl } from "../services/siteImages";
 import { getToken } from "../services/auth";
 import { useConfirm } from "../hooks/useConfirm";
+import { getProductTypes, createProductType, deleteProductType, type ProductType } from "../services/productTypes";
 
 interface AdminCategoriesProps {
   onBack: () => void;
@@ -32,8 +33,12 @@ export default function AdminCategories({ onBack }: AdminCategoriesProps) {
 
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
-  // Image upload/removal in-flight tracking: `${categoryId}-default` or `${categoryId}-hover`
   const [imageBusyKey, setImageBusyKey] = useState<string | null>(null);
+
+  const [allTypes, setAllTypes] = useState<ProductType[]>([]);
+  const [newTypeNameByCategory, setNewTypeNameByCategory] = useState<Record<number, string>>({});
+  const [creatingTypeCategoryId, setCreatingTypeCategoryId] = useState<number | null>(null);
+  const [deletingTypeId, setDeletingTypeId] = useState<number | null>(null);
 
   const { confirm, notify, ConfirmDialog } = useConfirm();
 
@@ -45,12 +50,19 @@ export default function AdminCategories({ onBack }: AdminCategoriesProps) {
       .finally(() => setLoading(false));
   };
 
+  const loadTypes = () => {
+    getProductTypes()
+      .then(setAllTypes)
+      .catch(() => {});
+  };
+
   useEffect(() => {
     if (!getToken()) {
       onBack();
       return;
     }
     loadCategories();
+    loadTypes();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -177,6 +189,40 @@ export default function AdminCategories({ onBack }: AdminCategoriesProps) {
     }
   };
 
+  const handleAddType = async (categoryId: number) => {
+    const name = (newTypeNameByCategory[categoryId] || "").trim();
+    if (!name) return;
+    setCreatingTypeCategoryId(categoryId);
+    try {
+      await createProductType(categoryId, name);
+      setNewTypeNameByCategory((prev) => ({ ...prev, [categoryId]: "" }));
+      loadTypes();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to add type");
+    } finally {
+      setCreatingTypeCategoryId(null);
+    }
+  };
+
+  const handleDeleteType = async (type: ProductType) => {
+    if ((type.products_count ?? 0) > 0) {
+      await notify(
+        `"${type.name}" has ${type.products_count} product(s) tagged with it. Remove the tag from those products first.`
+      );
+      return;
+    }
+    if (!(await confirm(`Delete type "${type.name}"?`, { danger: true }))) return;
+    setDeletingTypeId(type.id);
+    try {
+      await deleteProductType(type.id);
+      loadTypes();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to delete type");
+    } finally {
+      setDeletingTypeId(null);
+    }
+  };
+
   return (
     <>
       <div style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" }} className="min-h-screen bg-white text-black">
@@ -215,7 +261,9 @@ export default function AdminCategories({ onBack }: AdminCategoriesProps) {
             <p className="text-[13px] text-[#6B6B6B]">No categories yet — add your first one above.</p>
           ) : (
             <div className="flex flex-col gap-4">
-              {categories.map((c) => (
+              {categories.map((c) => {
+                const typesForCategory = allTypes.filter((t) => t.category_id === c.id);
+                return (
                 <div key={c.id} className="border border-[#EAEAEA]">
                   {/* NAME ROW */}
                   <div className="flex items-center justify-between gap-4 px-5 py-4 border-b border-[#EAEAEA]">
@@ -273,7 +321,6 @@ export default function AdminCategories({ onBack }: AdminCategoriesProps) {
 
                   {/* IMAGES ROW */}
                   <div className="grid grid-cols-2 gap-4 p-5">
-                    {/* Default image */}
                     <div>
                       <p className="text-[10px] tracking-[0.08em] uppercase text-[#6B6B6B] mb-2">Default Photo</p>
                       <div className="aspect-[4/3] bg-[#F5F5F5] mb-2 overflow-hidden">
@@ -312,7 +359,6 @@ export default function AdminCategories({ onBack }: AdminCategoriesProps) {
                       </div>
                     </div>
 
-                    {/* Hover image */}
                     <div>
                       <p className="text-[10px] tracking-[0.08em] uppercase text-[#6B6B6B] mb-2">Hover Photo</p>
                       <div className="aspect-[4/3] bg-[#F5F5F5] mb-2 overflow-hidden">
@@ -351,8 +397,65 @@ export default function AdminCategories({ onBack }: AdminCategoriesProps) {
                       </div>
                     </div>
                   </div>
+
+                  {/* PRODUCT TYPES ROW */}
+                  <div className="px-5 pb-5 pt-1 border-t border-[#EAEAEA]">
+                    <p className="text-[10px] tracking-[0.08em] uppercase text-[#6B6B6B] mb-1 mt-3">
+                      Product Types
+                    </p>
+                    <p className="text-[11px] text-[#6B6B6B] mb-3">
+                      Optional sub-categories within {c.name} (e.g. Comfy, Classic, Chunky) — shown as filters
+                      to shoppers browsing this category.
+                    </p>
+
+                    {typesForCategory.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        {typesForCategory.map((t) => (
+                          <span
+                            key={t.id}
+                            className="inline-flex items-center gap-1.5 text-[11px] bg-[#F5F5F5] border border-[#EAEAEA] px-2.5 py-1.5"
+                          >
+                            {t.name}
+                            <button
+                              onClick={() => handleDeleteType(t)}
+                              disabled={deletingTypeId === t.id}
+                              className="text-[13px] leading-none hover:text-red-600 transition-colors duration-200 disabled:opacity-40"
+                              aria-label={`Delete ${t.name}`}
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newTypeNameByCategory[c.id] || ""}
+                        onChange={(e) =>
+                          setNewTypeNameByCategory((prev) => ({ ...prev, [c.id]: e.target.value }))
+                        }
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleAddType(c.id);
+                          }
+                        }}
+                        placeholder="New type (e.g. Comfy)"
+                        className="flex-1 bg-[#F5F5F5] border border-[#EAEAEA] px-3 py-2 text-[12px] outline-none focus:border-black transition-colors duration-200"
+                      />
+                      <button
+                        onClick={() => handleAddType(c.id)}
+                        disabled={creatingTypeCategoryId === c.id || !(newTypeNameByCategory[c.id] || "").trim()}
+                        className="text-[10px] tracking-[0.08em] uppercase border border-[#EAEAEA] px-3 py-2 hover:border-black transition-colors duration-200 disabled:opacity-40"
+                      >
+                        {creatingTypeCategoryId === c.id ? "Adding…" : "+ Add"}
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              ))}
+              );})}
             </div>
           )}
         </main>
