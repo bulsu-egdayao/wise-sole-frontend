@@ -126,6 +126,24 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
     setForm((prev) => ({ ...prev, sizes: [...prev.sizes, { size: "", stock: "0" }] }));
   };
 
+  // Quick-add a whole preset range of sizes at once (skips any already present)
+  const addSizePreset = (presetSizes: string[]) => {
+    setForm((prev) => {
+      const existing = new Set(prev.sizes.map((s) => s.size.trim().toUpperCase()));
+      const toAdd = presetSizes
+        .filter((s) => !existing.has(s.toUpperCase()))
+        .map((s) => ({ size: s, stock: "0" }));
+      return { ...prev, sizes: [...prev.sizes, ...toAdd] };
+    });
+  };
+
+  const SHOE_SIZES = Array.from({ length: 47 - 35 + 1 }, (_, i) => String(35 + i));
+  const APPAREL_SIZES = ["XXS", "XS", "S", "M", "L", "XL", "XXL"];
+
+  const selectedCategorySlug = categories.find((c) => String(c.id) === form.category_id)?.slug || "";
+  const showShoePreset = ["sneakers", "slides"].includes(selectedCategorySlug);
+  const showApparelPreset = ["hoodies", "shirts", "shorts"].includes(selectedCategorySlug);
+
   const updateSizeRow = (index: number, field: keyof SizeFormRow, value: string) => {
     setForm((prev) => ({
       ...prev,
@@ -542,6 +560,29 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
                       </button>
                     </div>
                   ))}
+                </div>
+              )}
+
+              {(showShoePreset || showApparelPreset) && (
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {showShoePreset && (
+                    <button
+                      type="button"
+                      onClick={() => addSizePreset(SHOE_SIZES)}
+                      className="text-[11px] tracking-[0.04em] border border-[#EAEAEA] px-4 py-2.5 hover:border-black transition-colors duration-200"
+                    >
+                      + Fill Shoe Sizes (35–47)
+                    </button>
+                  )}
+                  {showApparelPreset && (
+                    <button
+                      type="button"
+                      onClick={() => addSizePreset(APPAREL_SIZES)}
+                      className="text-[11px] tracking-[0.04em] border border-[#EAEAEA] px-4 py-2.5 hover:border-black transition-colors duration-200"
+                    >
+                      + Fill Apparel Sizes (XXS–XXL)
+                    </button>
+                  )}
                 </div>
               )}
 
