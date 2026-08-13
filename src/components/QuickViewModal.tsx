@@ -65,7 +65,7 @@ export default function QuickViewModal({ product, onClose }: QuickViewModalProps
               src={quickViewImage(product)}
               alt={product.name}
               loading="lazy"
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain"
             />
             {product.is_new && (
               <span className="absolute top-4 left-4 bg-black text-white text-[10px] tracking-[0.15em] uppercase px-2.5 py-1">

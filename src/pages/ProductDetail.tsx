@@ -29,7 +29,6 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
   const { favorites, toggleFavorite } = useFavorites();
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
 
-  // Inquiry form state
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
   const [message, setMessage] = useState("");
@@ -143,9 +142,18 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
     ? imageUrl(images[activeImageIndex]?.image_path, seed)
     : imageUrl("", seed);
 
+  const sortedSizes = product.sizes
+    ? [...product.sizes].sort((a, b) => {
+        const numA = parseFloat(a.size);
+        const numB = parseFloat(b.size);
+        const bothNumeric = !isNaN(numA) && !isNaN(numB);
+        if (bothNumeric) return numA - numB;
+        return a.size.localeCompare(b.size);
+      })
+    : [];
+
   return (
     <div style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" }} className="bg-white text-black min-h-screen w-full">
-      {/* MINIMAL HEADER */}
       <header className="sticky top-0 z-50 bg-white border-b border-[#EAEAEA]">
         <div className="max-w-[1440px] mx-auto px-5 md:px-10">
           <div className="flex items-center justify-between h-[64px] md:h-[76px]">
@@ -167,16 +175,14 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
         </div>
       </header>
 
-      {/* PRODUCT MAIN */}
       <section className="max-w-[1440px] mx-auto px-5 md:px-10 py-10 md:py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-16">
-          {/* GALLERY */}
           <div>
             <div className="relative overflow-hidden bg-[#F5F5F5] aspect-[4/5] mb-3">
               <img
                 src={mainImageSrc}
                 alt={product.name}
-                className="w-full h-full object-cover transition-opacity duration-300"
+                className="w-full h-full object-contain transition-opacity duration-300"
               />
               {product.is_new && (
                 <span className="absolute top-4 left-4 bg-black text-white text-[10px] tracking-[0.15em] uppercase px-2.5 py-1">
@@ -209,14 +215,13 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
                       i === activeImageIndex ? "opacity-100 ring-1 ring-black" : "opacity-60 hover:opacity-90"
                     }`}
                   >
-                    <img src={imageUrl(img.image_path, seed)} alt="" loading="lazy" className="w-full h-full object-cover" />
+                    <img src={imageUrl(img.image_path, seed)} alt="" loading="lazy" className="w-full h-full object-contain" />
                   </button>
                 ))}
               </div>
             )}
           </div>
 
-          {/* INFO + INQUIRY */}
           <div>
             <p className="text-[10px] tracking-[0.15em] uppercase text-[#6B6B6B] mb-2">
               {product.category.name}
@@ -241,22 +246,13 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
               </p>
             )}
 
-            {/* SIZE SELECTOR */}
             {product.sizes && product.sizes.length > 0 && (
               <div className="mb-6">
                 <p className="text-[11px] tracking-[0.08em] uppercase text-[#6B6B6B] mb-2.5">
                   Select Size
                 </p>
                 <div className="flex flex-wrap gap-2">
-                 {[...product.sizes]
-                    .sort((a, b) => {
-                      const numA = parseFloat(a.size);
-                      const numB = parseFloat(b.size);
-                      const bothNumeric = !isNaN(numA) && !isNaN(numB);
-                      if (bothNumeric) return numA - numB;
-                      return a.size.localeCompare(b.size);
-                    })
-                    .map((s) => {
+                  {sortedSizes.map((s) => {
                     const outOfStock = s.stock <= 0;
                     const active = selectedSize === s.size;
                     return (
@@ -302,7 +298,6 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
               </span>
             </div>
 
-            {/* WHATSAPP QUICK BUTTON */}
             <a
               href={needsSizeSelection ? undefined : waLink}
               target="_blank"
@@ -329,7 +324,6 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
               {favorites.includes(product.id) ? "♥ Saved to Favorites" : "♡ Add to Favorites"}
             </button>
 
-            {/* INQUIRY FORM */}
             <div className="border-t border-[#EAEAEA] pt-8">
               <p className="text-[10px] tracking-[0.15em] uppercase text-[#6B6B6B] mb-1">Or send a message</p>
               <h2 className="text-[16px] font-semibold mb-5">Ask about this product</h2>
@@ -396,7 +390,6 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
         </div>
       </section>
 
-      {/* RELATED PRODUCTS */}
       {related.length > 0 && (
         <section className="border-t border-[#EAEAEA]">
           <div className="max-w-[1440px] mx-auto px-5 md:px-10 py-16 md:py-24">

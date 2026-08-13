@@ -11,22 +11,22 @@ function resolveImagePath(path: string): string {
   return `${STORAGE_URL}/storage/${path}`;
 }
 
-function productHasImage(product: Product): boolean {
-  return !!(product.images && product.images.length > 0);
-}
-
-function productImage(product: Product): string {
+function productImage(product: Product, fallbackSeed: string): string {
   const primary =
     product.images?.find((img) => img.is_primary) || product.images?.[0];
-  return primary ? resolveImagePath(primary.image_path) : "";
+  if (primary) {
+    return resolveImagePath(primary.image_path);
+  }
+  return `https://picsum.photos/seed/${fallbackSeed}/700/900`;
 }
 
-function productImageSecondary(product: Product): string {
+function productImageSecondary(product: Product, fallbackSeed: string): string {
   const sorted = [...(product.images || [])].sort((a, b) => a.sort_order - b.sort_order);
   const secondary = sorted.find((img) => !img.is_primary) || sorted[1];
-  // If there's no second photo, just reuse the primary rather than showing
-  // an unrelated stock image on hover.
-  return secondary ? resolveImagePath(secondary.image_path) : productImage(product);
+  if (secondary) {
+    return resolveImagePath(secondary.image_path);
+  }
+  return `https://picsum.photos/seed/${fallbackSeed}b/700/900`;
 }
 
 export function peso(price: string | number) {
@@ -62,8 +62,6 @@ interface ProductCardProps {
   toggleFavorite: (id: number) => void;
   onClick?: () => void;
   onQuickView?: (product: Product) => void;
-  // While true, blanks out the image area entirely instead of showing the
-  // picsum placeholder fallback — prevents dummy photos flashing during load.
   isPageLoading?: boolean;
 }
 
@@ -76,27 +74,28 @@ export default function ProductCard({
   isPageLoading = false,
 }: ProductCardProps) {
   const isFav = favorites.includes(product.id);
- const hasImage = productHasImage(product);
-  const img = productImage(product);
-  const img2 = productImageSecondary(product);
+  const seed = `wsp${product.id}`;
+  const img = productImage(product, seed);
+  const img2 = productImageSecondary(product, seed);
+  const hasImage = !!(product.images && product.images.length > 0);
 
   return (
     <div className="group flex flex-col cursor-pointer" onClick={onClick}>
       <div className="relative overflow-hidden bg-[#F5F5F5] aspect-[4/5]">
-      {!isPageLoading && (
+        {!isPageLoading && (
           hasImage ? (
             <>
               <img
                 src={img}
                 alt={product.name}
                 loading="lazy"
-                className="absolute inset-0 w-full h-full object-cover transition-all duration-500 ease-out group-hover:scale-[1.04] group-hover:opacity-0"
+                className="absolute inset-0 w-full h-full object-contain transition-opacity duration-500 ease-out group-hover:opacity-0"
               />
               <img
                 src={img2}
                 alt={product.name}
                 loading="lazy"
-                className="absolute inset-0 w-full h-full object-cover opacity-0 scale-[1.04] transition-all duration-500 ease-out group-hover:opacity-100 group-hover:scale-100"
+                className="absolute inset-0 w-full h-full object-contain opacity-0 transition-opacity duration-500 ease-out group-hover:opacity-100"
               />
             </>
           ) : (
