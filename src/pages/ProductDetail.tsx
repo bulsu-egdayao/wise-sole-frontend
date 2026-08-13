@@ -153,12 +153,25 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
     ? imageUrl(images[activeImageIndex]?.image_path, seed)
     : imageUrl("", seed);
 
+  const SIZE_ORDER = ["XXS", "XS", "S", "M", "L", "XL", "XXL", "XXXL", "4XL", "5XL"];
+
+  function sizeOrderIndex(size: string): number {
+    return SIZE_ORDER.indexOf(size.trim().toUpperCase());
+  }
+
   const sortedSizes = product.sizes
     ? [...product.sizes].sort((a, b) => {
         const numA = parseFloat(a.size);
         const numB = parseFloat(b.size);
         const bothNumeric = !isNaN(numA) && !isNaN(numB);
         if (bothNumeric) return numA - numB;
+
+        const orderA = sizeOrderIndex(a.size);
+        const orderB = sizeOrderIndex(b.size);
+        if (orderA !== -1 && orderB !== -1) return orderA - orderB;
+        if (orderA !== -1) return -1;
+        if (orderB !== -1) return 1;
+
         return a.size.localeCompare(b.size);
       })
     : [];
