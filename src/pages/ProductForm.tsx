@@ -5,6 +5,7 @@ import type { ProductFormData, SizeFormRow } from "../services/adminProducts";
 import { uploadProductImages, deleteProductImage, reorderProductImages, imageUrl } from "../services/productImages";
 import { useConfirm } from "../hooks/useConfirm";
 import ImageCropModal from "../components/ImageCropModal";
+import { getProductTypes, type ProductType } from "../services/productTypes";
 
 interface ProductFormProps {
   product: Product | null; // null = creating a new product, otherwise editing this one
@@ -20,6 +21,7 @@ const emptyForm: ProductFormData = {
   price: "",
   sale_price: "",
   category_id: "",
+  product_type_id: "",
   stock: "0",
   is_available: true,
   is_featured: false,
@@ -44,14 +46,13 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
   const [draggedPendingIndex, setDraggedPendingIndex] = useState<number | null>(null);
   const { confirm, ConfirmDialog } = useConfirm();
 
-  // Crop flow: a queue of newly-picked files waiting to be cropped one at a time,
-  // plus which pending thumbnail (if any) is being re-cropped after the fact.
   const [cropQueue, setCropQueue] = useState<File[]>([]);
   const [reCropIndex, setReCropIndex] = useState<number | null>(null);
 
-  const isEditing = product !== null;
+  const [availableTypes, setAvailableTypes] = useState<ProductType[]>([]);
+  const [loadingTypes, setLoadingTypes] = useState(false);
 
-  console.log("RENDER — cropQueue:", cropQueue, "length:", cropQueue.length);
+  const isEditing = product !== null;
 
   useEffect(() => {
     fetch(`${API_URL}/categories`)
@@ -68,6 +69,24 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
   }, [form.sizes]);
 
   useEffect(() => {
+    if (!form.category_id) {
+      setAvailableTypes([]);
+      return;
+    }
+    setLoadingTypes(true);
+    getProductTypes(Number(form.category_id))
+      .then((types) => {
+        setAvailableTypes(types);
+        setForm((prev) => {
+          const stillValid = types.some((t) => String(t.id) === prev.product_type_id);
+          return stillValid ? prev : { ...prev, product_type_id: "" };
+        });
+      })
+      .catch(() => setAvailableTypes([]))
+      .finally(() => setLoadingTypes(false));
+  }, [form.category_id]);
+
+  useEffect(() => {
     if (product) {
       setForm({
         name: product.name,
@@ -75,6 +94,7 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
         price: product.price,
         sale_price: product.sale_price ?? "",
         category_id: String(product.category_id),
+        product_type_id: product.product_type_id ? String(product.product_type_id) : "",
         stock: String(product.stock),
         is_available: product.is_available,
         is_featured: product.is_featured,
@@ -117,32 +137,24 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
       : null;
   const saleInvalid = form.sale_price !== "" && saleNum > 0 && priceNum > 0 && saleNum >= priceNum;
 
-  // --- Images: selection now feeds a crop queue instead of going straight to selectedFiles ---
-const handleFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     const fileArray = files ? Array.from(files) : [];
-    console.log("handleFilesSelected fired, files:", fileArray.length);
     if (fileArray.length > 0) {
-      setCropQueue((prev) => {
-        console.log("setCropQueue called, prev:", prev.length, "adding:", fileArray.length);
-        return [...prev, ...fileArray];
-      });
+      setCropQueue((prev) => [...prev, ...fileArray]);
     }
     e.target.value = "";
-};
+  };
 
-  // Called when the crop modal for a newly-picked file is applied
   const handleCropApplied = (croppedFile: File) => {
     setSelectedFiles((prev) => [...prev, croppedFile]);
     setCropQueue((prev) => prev.slice(1));
   };
 
-  // Skip cropping this file (don't add it) and move to the next one in the queue
   const handleCropCancelled = () => {
     setCropQueue((prev) => prev.slice(1));
   };
 
-  // Re-cropping an already-selected pending file
   const handleReCropApplied = (croppedFile: File) => {
     if (reCropIndex === null) return;
     setSelectedFiles((prev) => prev.map((f, i) => (i === reCropIndex ? croppedFile : f)));
@@ -349,7 +361,7 @@ const handleFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
                 <label className="block text-[11px] tracking-[0.08em] uppercase text-[#6B6B6B] mb-1.5">
                   Base Stock Quantity
                 </label>
-              <input
+                <input
                   type="number"
                   min="0"
                   value={form.stock}
@@ -387,6 +399,31 @@ const handleFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
                 </select>
               </div>
             </div>
+
+            {form.category_id && (availableTypes.length > 0 || loadingTypes) && (
+              <div>
+                <label className="block text-[11px] tracking-[0.08em] uppercase text-[#6B6B6B] mb-1.5">
+                  Type — optional
+                </label>
+                <select
+                  value={form.product_type_id}
+                  onChange={(e) => handleChange("product_type_id", e.target.value)}
+                  disabled={loadingTypes}
+                  className="w-full bg-[#F5F5F5] border border-[#EAEAEA] px-4 py-3 text-[14px] outline-none focus:border-black transition-colors duration-200 disabled:opacity-50"
+                >
+                  <option value="">No specific type</option>
+                  {availableTypes.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-[#6B6B6B] mt-1.5">
+                  Sub-category within {categories.find((c) => String(c.id) === form.category_id)?.name} — manage
+                  the list of types from the Categories page.
+                </p>
+              </div>
+            )}
 
             <div>
               <label className="block text-[11px] tracking-[0.08em] uppercase text-[#6B6B6B] mb-1.5">

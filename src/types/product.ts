@@ -7,6 +7,13 @@ export interface Category {
   products_count?: number;
 }
 
+export interface ProductType {
+  id: number;
+  category_id: number;
+  name: string;
+  slug: string;
+}
+
 export interface ProductImage {
   id: number;
   image_path: string;
@@ -28,11 +35,13 @@ export interface Product {
   price: string;
   sale_price: string | null;
   category_id: number;
+  product_type_id: number | null;
   stock: number;
   is_available: boolean;
   is_featured: boolean;
   is_new: boolean;
   category: Category;
+  product_type?: ProductType | null;
   images: ProductImage[];
   sizes: ProductSize[];
 }

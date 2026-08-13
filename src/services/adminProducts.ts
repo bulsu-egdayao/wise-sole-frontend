@@ -22,6 +22,7 @@ export interface ProductFormData {
   price: string;
   sale_price: string; // empty string = no sale
   category_id: string;
+  product_type_id: string; // empty string = no type selected
   stock: string;
   is_available: boolean;
   is_featured: boolean;
@@ -37,6 +38,7 @@ function serializeForm(form: ProductFormData) {
     price: form.price,
     sale_price: form.sale_price === "" ? "" : form.sale_price,
     category_id: form.category_id,
+    product_type_id: form.product_type_id === "" ? null : form.product_type_id,
     stock: form.stock,
     is_available: form.is_available,
     is_featured: form.is_featured,
