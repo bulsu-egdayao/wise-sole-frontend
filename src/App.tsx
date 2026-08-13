@@ -218,6 +218,19 @@ export default function WiseSole() {
 
   return (
     <div style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" }} className="bg-white text-black min-h-screen w-full">
+      <style>{`
+        @keyframes heroZoom {
+          0% { transform: scale(1); }
+          100% { transform: scale(1.08); }
+        }
+        @keyframes heroFadeIn {
+          0% { opacity: 0; }
+          100% { opacity: 0.8; }
+        }
+        .hero-zoom-img {
+          animation: heroZoom 12s ease-out forwards, heroFadeIn 1.2s ease-out forwards;
+        }
+      `}</style>
       {/* HEADER */}
       <header
         className={`sticky top-0 z-50 bg-white border-b transition-shadow duration-300 ${
@@ -341,11 +354,11 @@ export default function WiseSole() {
           <div className="max-w-[1440px] mx-auto px-5 md:px-10 pt-10 md:pt-16 pb-8">
             <div className="flex flex-col gap-6 md:gap-8">
               <div className="relative overflow-hidden bg-[#0a0a0a] min-h-[320px] md:min-h-[460px] flex items-end">
-             {!loading && (
+ {!loading && (
   <img
     src={siteImages.hero_main ? siteImageUrl(siteImages.hero_main) : `https://picsum.photos/seed/wshero/1600/550`}
     alt="Wise Sole collection"
-    className="absolute inset-0 w-full h-full object-cover opacity-80"
+    className="absolute inset-0 w-full h-full object-cover hero-zoom-img"
   />
 )}
 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
