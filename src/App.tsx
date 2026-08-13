@@ -372,7 +372,7 @@ export default function WiseSole() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-                <div className="relative overflow-hidden bg-[#F5F5F5] aspect-[3/2] group">
+             <a href="#new-arrivals" className="relative overflow-hidden bg-[#F5F5F5] aspect-[3/2] group block">
                 {!loading && (
     <img
      src={siteImages.hero_side_1 ? siteImageUrl(siteImages.hero_side_1) : `https://picsum.photos/seed/wshero2/750/500`}
@@ -384,8 +384,8 @@ export default function WiseSole() {
                   <div className="absolute bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-black/60 to-transparent">
                     <p className="text-white text-[13px] tracking-[0.04em]">The Latest Drop</p>
                   </div>
-                </div>
-                <div className="relative overflow-hidden bg-[#F5F5F5] aspect-[3/2] group">
+                </a>
+              <a href="#featured" className="relative overflow-hidden bg-[#F5F5F5] aspect-[3/2] group block">
                   {!loading && (
     <img
        src={siteImages.hero_side_2 ? siteImageUrl(siteImages.hero_side_2) : `https://picsum.photos/seed/wshero3/750/500`}
@@ -395,9 +395,9 @@ export default function WiseSole() {
     />
   )}
                   <div className="absolute bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-black/60 to-transparent">
-                    <p className="text-white text-[13px] tracking-[0.04em]">The Finishing Touch</p>
+                    <p className="text-white text-[13px] tracking-[0.04em]">Best Sellers</p>
                   </div>
-                </div>
+                </a>
               </div>
             </div>
           </div>
@@ -488,7 +488,7 @@ export default function WiseSole() {
       </section>
 
       {/* NEW ARRIVALS */}
-      <section className="max-w-[1440px] mx-auto px-5 md:px-10 py-16 md:py-24">
+      <section id="new-arrivals" className="max-w-[1440px] mx-auto px-5 md:px-10 py-16 md:py-24 scroll-mt-[76px]">
         <Reveal className="flex items-end justify-between mb-8 md:mb-10 border-b border-[#EAEAEA] pb-5">
           <div>
             <p className="text-[10px] tracking-[0.15em] uppercase text-[#6B6B6B] mb-2">Just Landed</p>
