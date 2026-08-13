@@ -25,26 +25,20 @@ const CATEGORY_IMG_SEEDS: Record<string, string> = {
   accessories: "wsacc",
 };
 
-function categoryImage(slug: string): string {
-  const seed = CATEGORY_IMG_SEEDS[slug] || "wscat";
-  return `https://picsum.photos/seed/${seed}/600/750`;
+function categoryHasImage(category: Category): boolean {
+  return !!category.image_path;
 }
 
-// Hover-state photo — shown when the visitor's cursor is over a category tile
-function categoryImageHover(slug: string): string {
-  const seed = CATEGORY_IMG_SEEDS[slug] || "wscat";
-  return `https://picsum.photos/seed/${seed}hover/600/750`;
-}
-
-// Resolves to the admin-uploaded category photo if one exists, otherwise the placeholder
 function resolveCategoryImage(category: Category): string {
-  return category.image_path ? siteImageUrl(category.image_path) : categoryImage(category.slug);
+  return category.image_path ? siteImageUrl(category.image_path) : "";
 }
 
 function resolveCategoryImageHover(category: Category): string {
+  // If no dedicated hover photo was uploaded, just reuse the default photo
+  // (no crossfade needed) rather than showing an unrelated stock image.
   return category.hover_image_path
     ? siteImageUrl(category.hover_image_path)
-    : categoryImageHover(category.slug);
+    : resolveCategoryImage(category);
 }
 
 interface IconProps {
@@ -461,18 +455,26 @@ export default function WiseSole() {
                   onClick={() => { window.location.href = `/category/${c.slug}`; }}
                   className="relative w-full overflow-hidden bg-black aspect-[4/5] group block"
                 >
-                  <img
-                    src={resolveCategoryImage(c)}
-                    alt={c.name}
-                    loading="lazy"
-                    className="absolute inset-0 w-full h-full object-cover opacity-70 transition-opacity duration-500 group-hover:opacity-0"
-                  />
-                  <img
-                    src={resolveCategoryImageHover(c)}
-                    alt=""
-                    loading="lazy"
-                    className="absolute inset-0 w-full h-full object-cover opacity-0 scale-105 transition-all duration-500 group-hover:opacity-90 group-hover:scale-100"
-                  />
+                {categoryHasImage(c) ? (
+                    <>
+                      <img
+                        src={resolveCategoryImage(c)}
+                        alt={c.name}
+                        loading="lazy"
+                        className="absolute inset-0 w-full h-full object-cover opacity-70 transition-opacity duration-500 group-hover:opacity-0"
+                      />
+                      <img
+                        src={resolveCategoryImageHover(c)}
+                        alt=""
+                        loading="lazy"
+                        className="absolute inset-0 w-full h-full object-cover opacity-0 scale-105 transition-all duration-500 group-hover:opacity-90 group-hover:scale-100"
+                      />
+                    </>
+                  ) : (
+                    <div className="absolute inset-0 bg-[#1a1a1a] flex items-center justify-center">
+                      <span className="text-white/30 text-[10px] tracking-[0.1em] uppercase">Photo coming soon</span>
+                    </div>
+                  )}
                   <div className="absolute inset-0 flex items-center justify-center">
                     <span className="text-white text-[13px] md:text-[15px] tracking-[0.1em] uppercase relative">
                       {c.name}
@@ -505,8 +507,8 @@ export default function WiseSole() {
           <p className="text-[13px] text-[#6B6B6B] mb-6">No new arrivals yet — mark a product as "New" in the admin dashboard.</p>
         )}
         <div className="flex gap-4 md:gap-6 overflow-x-auto pb-4 -mx-5 px-5 md:mx-0 md:px-0 snap-x snap-mandatory scroll-smooth [&::-webkit-scrollbar]:hidden">
-          {newArrivals.map((p) => (
-            <div key={p.id} className="min-w-[220px] md:min-w-[280px] snap-start">
+         {newArrivals.map((p) => (
+            <div key={p.id} className="w-[220px] md:w-[280px] shrink-0 snap-start">
               <ProductCard
                 product={p}
                 favorites={favorites}
