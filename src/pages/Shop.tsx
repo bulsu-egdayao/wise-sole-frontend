@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import type { Product, Category } from "../types/product";
 import { getShopProducts, getShopCategories, getAvailableSizes } from "../services/shop";
 import type { SortOption } from "../services/shop";
+import { getProductTypes, type ProductType } from "../services/productTypes";
 import ProductCard from "../components/ProductCard";
 import QuickViewModal from "../components/QuickViewModal";
 import ProductFilters from "../components/ProductFilters";
@@ -25,6 +26,7 @@ function readInitialFilters() {
     size: params.get("size") || "",
     onSale: params.get("on_sale") === "1",
     inStock: params.get("in_stock") === "1",
+    type: params.get("type") || "",
   };
 }
 
@@ -52,26 +54,39 @@ export default function Shop() {
   const [inStock, setInStock] = useState<boolean>(initial.inStock);
   const [availableSizes, setAvailableSizes] = useState<string[]>([]);
 
-  // Load categories once
+  const [types, setTypes] = useState<ProductType[]>([]);
+  const [selectedTypeSlug, setSelectedTypeSlug] = useState<string>(initial.type);
+
   useEffect(() => {
     getShopCategories().then(setCategories).catch(() => {});
   }, []);
 
-  // Reload the available sizes list whenever the category changes
-  // (so you never see a size filter for a category that has none)
   useEffect(() => {
     getAvailableSizes(activeCategory || undefined)
       .then(setAvailableSizes)
       .catch(() => setAvailableSizes([]));
   }, [activeCategory]);
 
-  // Debounce search input
+  useEffect(() => {
+    const cat = categories.find((c) => c.slug === activeCategory);
+    if (!cat) {
+      setTypes([]);
+      setSelectedTypeSlug("");
+      return;
+    }
+    getProductTypes(cat.id)
+      .then((result) => {
+        setTypes(result);
+        setSelectedTypeSlug((prev) => (result.some((t) => t.slug === prev) ? prev : ""));
+      })
+      .catch(() => setTypes([]));
+  }, [activeCategory, categories]);
+
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchInput), 400);
     return () => clearTimeout(t);
   }, [searchInput]);
 
-  // Debounce price inputs so typing doesn't fire a request on every keystroke
   const [debouncedMinPrice, setDebouncedMinPrice] = useState(minPrice);
   const [debouncedMaxPrice, setDebouncedMaxPrice] = useState(maxPrice);
   useEffect(() => {
@@ -82,16 +97,16 @@ export default function Shop() {
     return () => clearTimeout(t);
   }, [minPrice, maxPrice]);
 
-  // Reset to page 1 whenever a filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeCategory, debouncedSearch, sort, debouncedMinPrice, debouncedMaxPrice, selectedSize, onSale, inStock]);
+  }, [activeCategory, debouncedSearch, sort, debouncedMinPrice, debouncedMaxPrice, selectedSize, onSale, inStock, selectedTypeSlug]);
 
   const loadProducts = useCallback((page: number) => {
     setLoading(true);
     setError(null);
     getShopProducts({
       category: activeCategory || undefined,
+      type: selectedTypeSlug || undefined,
       search: debouncedSearch || undefined,
       sort,
       page,
@@ -109,13 +124,13 @@ export default function Shop() {
       })
       .catch(() => setError("Failed to load products. Check that the API is running."))
       .finally(() => setLoading(false));
-  }, [activeCategory, debouncedSearch, sort, debouncedMinPrice, debouncedMaxPrice, selectedSize, onSale, inStock]);
+  }, [activeCategory, selectedTypeSlug, debouncedSearch, sort, debouncedMinPrice, debouncedMaxPrice, selectedSize, onSale, inStock]);
 
   useEffect(() => {
     loadProducts(currentPage);
-    // Keep the URL shareable/bookmarkable without a full reload
     const params = new URLSearchParams();
     if (activeCategory) params.set("category", activeCategory);
+    if (selectedTypeSlug) params.set("type", selectedTypeSlug);
     if (debouncedSearch) params.set("search", debouncedSearch);
     if (sort !== "newest") params.set("sort", sort);
     if (debouncedMinPrice) params.set("min_price", debouncedMinPrice);
@@ -126,7 +141,7 @@ export default function Shop() {
     const query = params.toString();
     window.history.replaceState({}, "", query ? `/shop?${query}` : "/shop");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeCategory, debouncedSearch, sort, debouncedMinPrice, debouncedMaxPrice, selectedSize, onSale, inStock, currentPage]);
+  }, [activeCategory, selectedTypeSlug, debouncedSearch, sort, debouncedMinPrice, debouncedMaxPrice, selectedSize, onSale, inStock, currentPage]);
 
   const goHome = () => {
     window.location.href = "/";
@@ -142,9 +157,34 @@ export default function Shop() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  const shouldGroupByType = !!activeCategory && types.length > 0 && !selectedTypeSlug && !debouncedSearch;
+
+  const groupedSections = shouldGroupByType
+    ? types
+        .map((t) => ({ type: t, items: products.filter((p) => p.product_type_id === t.id) }))
+        .filter((g) => g.items.length > 0)
+    : [];
+  const untypedProducts = shouldGroupByType ? products.filter((p) => !p.product_type_id) : [];
+
+  const renderProductGrid = (items: Product[]) => (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-10 md:gap-x-8 md:gap-y-14">
+      {items.map((p) => (
+        <ProductCard
+          key={p.id}
+          product={p}
+          favorites={favorites}
+          toggleFavorite={toggleFavorite}
+          onClick={() => goToProduct(p)}
+          onQuickView={(prod) => setQuickViewProduct(prod)}
+        />
+      ))}
+    </div>
+  );
+
+  const activeCategoryName = categories.find((c) => c.slug === activeCategory)?.name;
+
   return (
     <div style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" }} className="bg-white text-black min-h-screen w-full">
-      {/* HEADER */}
       <header className="sticky top-0 z-50 bg-white border-b border-[#EAEAEA]">
         <div className="max-w-[1440px] mx-auto px-5 md:px-10">
           <div className="flex items-center justify-between h-[64px] md:h-[76px]">
@@ -170,7 +210,6 @@ export default function Shop() {
         <p className="text-[10px] tracking-[0.15em] uppercase text-[#6B6B6B] mb-2">Full Catalog</p>
         <h1 className="text-[26px] md:text-[34px] font-semibold tracking-tight mb-8">Shop</h1>
 
-        {/* SEARCH */}
         <div className="mb-6">
           <input
             type="text"
@@ -181,8 +220,7 @@ export default function Shop() {
           />
         </div>
 
-        {/* CATEGORY FILTER + SORT */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-10 pb-6 border-b border-[#EAEAEA]">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6 pb-6 border-b border-[#EAEAEA]">
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setActiveCategory("")}
@@ -222,6 +260,37 @@ export default function Shop() {
           </select>
         </div>
 
+        {types.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 mb-8">
+            <span className="text-[10px] tracking-[0.1em] uppercase text-[#6B6B6B] mr-1">
+              Type in {activeCategoryName}:
+            </span>
+            <button
+              onClick={() => setSelectedTypeSlug("")}
+              className={`text-[11px] tracking-[0.06em] px-3 py-1.5 border transition-colors duration-200 ${
+                selectedTypeSlug === ""
+                  ? "bg-black text-white border-black"
+                  : "border-[#EAEAEA] text-[#6B6B6B] hover:border-black hover:text-black"
+              }`}
+            >
+              All
+            </button>
+            {types.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setSelectedTypeSlug(t.slug)}
+                className={`text-[11px] tracking-[0.06em] px-3 py-1.5 border transition-colors duration-200 ${
+                  selectedTypeSlug === t.slug
+                    ? "bg-black text-white border-black"
+                    : "border-[#EAEAEA] text-[#6B6B6B] hover:border-black hover:text-black"
+                }`}
+              >
+                {t.name}
+              </button>
+            ))}
+          </div>
+        )}
+
         <ProductFilters
           minPrice={minPrice}
           maxPrice={maxPrice}
@@ -236,16 +305,15 @@ export default function Shop() {
           onInStockChange={setInStock}
         />
 
-        {/* RESULTS COUNT */}
         {!loading && !error && (
           <p className="text-[12px] text-[#6B6B6B] mb-6">
             {total} product{total === 1 ? "" : "s"}
-            {activeCategory && ` in ${categories.find((c) => c.slug === activeCategory)?.name || activeCategory}`}
+            {activeCategory && ` in ${activeCategoryName || activeCategory}`}
+            {selectedTypeSlug && ` · ${types.find((t) => t.slug === selectedTypeSlug)?.name}`}
             {debouncedSearch && ` matching "${debouncedSearch}"`}
           </p>
         )}
 
-        {/* GRID */}
         {loading ? (
           <p className="text-[13px] text-[#6B6B6B]">Loading products…</p>
         ) : error ? (
@@ -254,20 +322,36 @@ export default function Shop() {
           <p className="text-[13px] text-[#6B6B6B]">No products found. Try a different search or category.</p>
         ) : (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-10 md:gap-x-8 md:gap-y-14 mb-14">
-              {products.map((p) => (
-                <ProductCard
-                  key={p.id}
-                  product={p}
-                  favorites={favorites}
-                  toggleFavorite={toggleFavorite}
-                  onClick={() => goToProduct(p)}
-                  onQuickView={(prod) => setQuickViewProduct(prod)}
-                />
-              ))}
-            </div>
+            {shouldGroupByType ? (
+              <div className="flex flex-col gap-14 mb-14">
+                {groupedSections.map(({ type, items }) => (
+                  <div key={type.id}>
+                    <div className="flex items-center gap-3 mb-6">
+                      <h2 className="text-[17px] font-semibold">{type.name}</h2>
+                      <span className="text-[11px] text-[#6B6B6B]">
+                        {items.length} item{items.length === 1 ? "" : "s"}
+                      </span>
+                    </div>
+                    {renderProductGrid(items)}
+                  </div>
+                ))}
 
-            {/* PAGINATION */}
+                {untypedProducts.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-3 mb-6">
+                      <h2 className="text-[17px] font-semibold">Other {activeCategoryName}</h2>
+                      <span className="text-[11px] text-[#6B6B6B]">
+                        {untypedProducts.length} item{untypedProducts.length === 1 ? "" : "s"}
+                      </span>
+                    </div>
+                    {renderProductGrid(untypedProducts)}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="mb-14">{renderProductGrid(products)}</div>
+            )}
+
             {lastPage > 1 && (
               <div className="flex items-center justify-center gap-2">
                 <button
