@@ -1,6 +1,6 @@
-import React, { useState, useCallback } from "react";
-import Cropper from "react-easy-crop";
-import type { Area } from "react-easy-crop";
+import React, { useState, useRef, useCallback } from "react";
+import ReactCrop, { type Crop, type PixelCrop, centerCrop, makeAspectCrop } from "react-image-crop";
+import "react-image-crop/dist/ReactCrop.css";
 import { getCroppedImageFile } from "../utils/cropImage";
 
 interface ImageCropModalProps {
@@ -9,22 +9,52 @@ interface ImageCropModalProps {
   onApply: (croppedFile: File) => void;
 }
 
+// Starts the crop box covering the whole image (nothing cut off by default).
+function centeredFullCrop(mediaWidth: number, mediaHeight: number): Crop {
+  return centerCrop(
+    makeAspectCrop(
+      {
+        unit: "%",
+        width: 100,
+      },
+      mediaWidth / mediaHeight,
+      mediaWidth,
+      mediaHeight
+    ),
+    mediaWidth,
+    mediaHeight
+  );
+}
+
 export default function ImageCropModal({ file, onCancel, onApply }: ImageCropModalProps) {
   const [imageUrl] = useState(() => URL.createObjectURL(file));
-  const [crop, setCrop] = useState({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1);
-  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
+  const [crop, setCrop] = useState<Crop>();
+  const [completedCrop, setCompletedCrop] = useState<PixelCrop | null>(null);
   const [processing, setProcessing] = useState(false);
+  const imgRef = useRef<HTMLImageElement | null>(null);
 
-  const onCropComplete = useCallback((_croppedArea: Area, croppedAreaPx: Area) => {
-    setCroppedAreaPixels(croppedAreaPx);
+  const onImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
+    const { naturalWidth, naturalHeight } = e.currentTarget;
+    const initial = centeredFullCrop(naturalWidth, naturalHeight);
+    setCrop(initial);
   }, []);
 
   const handleApply = async () => {
-    if (!croppedAreaPixels) return;
+    if (!completedCrop || !imgRef.current) return;
     setProcessing(true);
     try {
-      const croppedFile = await getCroppedImageFile(imageUrl, croppedAreaPixels, file.name, file.type || "image/jpeg");
+      const img = imgRef.current;
+      const scaleX = img.naturalWidth / img.width;
+      const scaleY = img.naturalHeight / img.height;
+
+      const pixelCrop = {
+        x: completedCrop.x * scaleX,
+        y: completedCrop.y * scaleY,
+        width: completedCrop.width * scaleX,
+        height: completedCrop.height * scaleY,
+      };
+
+      const croppedFile = await getCroppedImageFile(imageUrl, pixelCrop, file.name, file.type || "image/jpeg");
       onApply(croppedFile);
     } catch {
       alert("Failed to crop image. Please try again.");
@@ -33,57 +63,61 @@ export default function ImageCropModal({ file, onCancel, onApply }: ImageCropMod
     }
   };
 
+  const handleSkipCrop = () => {
+    onApply(file);
+  };
+
   return (
     <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/70" onClick={onCancel} />
-      <div className="relative bg-white w-full max-w-[520px] shadow-xl">
+      <div className="relative bg-white w-full max-w-[560px] shadow-xl">
         <div className="px-6 pt-6 pb-4 border-b border-[#EAEAEA]">
           <p className="text-[15px] font-semibold">Adjust Photo</p>
           <p className="text-[11px] text-[#6B6B6B] mt-1">
-            Drag to reposition, use the slider to zoom. This crop will match how the photo appears across the site.
+            Drag the corners or edges to resize the crop box, or drag inside it to move it.
           </p>
         </div>
 
-        <div className="relative w-full h-[400px] bg-[#0a0a0a]">
-          <Cropper
-            image={imageUrl}
+        <div className="w-full max-h-[480px] overflow-auto bg-[#0a0a0a] flex items-center justify-center p-2">
+          <ReactCrop
             crop={crop}
-            zoom={zoom}
-            aspect={4 / 5}
-            onCropChange={setCrop}
-            onZoomChange={setZoom}
-            onCropComplete={onCropComplete}
-          />
+            onChange={(_, percentCrop) => setCrop(percentCrop)}
+            onComplete={(c) => setCompletedCrop(c)}
+          >
+            <img
+              ref={imgRef}
+              src={imageUrl}
+              alt=""
+              onLoad={onImageLoad}
+              style={{ maxHeight: "460px", maxWidth: "100%" }}
+            />
+          </ReactCrop>
         </div>
 
-        <div className="px-6 py-4">
-          <label className="block text-[10px] tracking-[0.08em] uppercase text-[#6B6B6B] mb-2">Zoom</label>
-          <input
-            type="range"
-            min={1}
-            max={3}
-            step={0.01}
-            value={zoom}
-            onChange={(e) => setZoom(Number(e.target.value))}
-            className="w-full accent-black"
-          />
-        </div>
-
-        <div className="flex gap-3 justify-end px-6 pb-6">
+        <div className="flex items-center justify-between gap-3 px-6 py-5">
           <button
-            onClick={onCancel}
+            onClick={handleSkipCrop}
             disabled={processing}
-            className="text-[11px] tracking-[0.08em] uppercase border border-[#EAEAEA] px-4 py-2.5 hover:border-black transition-colors duration-200 disabled:opacity-40"
+            className="text-[11px] tracking-[0.08em] uppercase text-[#6B6B6B] border-b border-[#6B6B6B] pb-0.5 hover:text-black hover:border-black transition-colors duration-200 disabled:opacity-40"
           >
-            Cancel
+            Skip Crop — Use Original
           </button>
-          <button
-            onClick={handleApply}
-            disabled={processing || !croppedAreaPixels}
-            className="text-[11px] tracking-[0.08em] uppercase bg-black text-white px-4 py-2.5 hover:bg-[#1a1a1a] transition-colors duration-200 disabled:opacity-40"
-          >
-            {processing ? "Applying…" : "Apply Crop"}
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={onCancel}
+              disabled={processing}
+              className="text-[11px] tracking-[0.08em] uppercase border border-[#EAEAEA] px-4 py-2.5 hover:border-black transition-colors duration-200 disabled:opacity-40"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleApply}
+              disabled={processing || !completedCrop}
+              className="text-[11px] tracking-[0.08em] uppercase bg-black text-white px-4 py-2.5 hover:bg-[#1a1a1a] transition-colors duration-200 disabled:opacity-40"
+            >
+              {processing ? "Applying…" : "Apply Crop"}
+            </button>
+          </div>
         </div>
       </div>
     </div>
