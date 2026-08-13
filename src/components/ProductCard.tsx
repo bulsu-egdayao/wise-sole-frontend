@@ -71,7 +71,7 @@ export default function ProductCard({
 
   return (
     <div className="group flex flex-col cursor-pointer" onClick={onClick}>
-      <div className="relative bg-[#F5F5F5]">
+      <div className="relative bg-[#F5F5F5] overflow-hidden">
         {!isPageLoading && (
           hasImage ? (
             <img
