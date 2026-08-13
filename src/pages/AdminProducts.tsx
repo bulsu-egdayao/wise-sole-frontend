@@ -142,7 +142,7 @@ export default function AdminProducts({ onBack, onAddNew, onEdit }: AdminProduct
         <main className="max-w-[1200px] mx-auto px-6 py-10">
           {error && <p className="text-[13px] text-red-600 mb-6">{error}</p>}
 
-          {/* FILTER BAR */}
+          {/* FILTER BAR — fixed widths on every control so nothing reflows when values change */}
           <div className="flex flex-col md:flex-row gap-3 mb-6">
             <input
               type="text"
@@ -155,7 +155,7 @@ export default function AdminProducts({ onBack, onAddNew, onEdit }: AdminProduct
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              className="bg-[#F5F5F5] border border-[#EAEAEA] px-3 py-2.5 text-[13px] outline-none focus:border-black transition-colors duration-200"
+              className="w-full md:w-[170px] shrink-0 bg-[#F5F5F5] border border-[#EAEAEA] px-3 py-2.5 text-[13px] outline-none focus:border-black transition-colors duration-200"
             >
               <option value="all">All Categories</option>
               {categories.map((c) => (
@@ -168,7 +168,7 @@ export default function AdminProducts({ onBack, onAddNew, onEdit }: AdminProduct
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-              className="bg-[#F5F5F5] border border-[#EAEAEA] px-3 py-2.5 text-[13px] outline-none focus:border-black transition-colors duration-200"
+              className="w-full md:w-[170px] shrink-0 bg-[#F5F5F5] border border-[#EAEAEA] px-3 py-2.5 text-[13px] outline-none focus:border-black transition-colors duration-200"
             >
               <option value="all">All Status</option>
               <option value="available">Available</option>
@@ -181,7 +181,7 @@ export default function AdminProducts({ onBack, onAddNew, onEdit }: AdminProduct
             <select
               value={sortOption}
               onChange={(e) => setSortOption(e.target.value as SortOption)}
-              className="bg-[#F5F5F5] border border-[#EAEAEA] px-3 py-2.5 text-[13px] outline-none focus:border-black transition-colors duration-200"
+              className="w-full md:w-[170px] shrink-0 bg-[#F5F5F5] border border-[#EAEAEA] px-3 py-2.5 text-[13px] outline-none focus:border-black transition-colors duration-200"
             >
               <option value="name_asc">Name (A–Z)</option>
               <option value="price_asc">Price (Low–High)</option>
@@ -190,14 +190,17 @@ export default function AdminProducts({ onBack, onAddNew, onEdit }: AdminProduct
               <option value="stock_desc">Stock (High–Low)</option>
             </select>
 
-            {hasActiveFilters && (
-              <button
-                onClick={clearFilters}
-                className="text-[11px] tracking-[0.08em] uppercase text-[#6B6B6B] hover:text-black transition-colors duration-200 whitespace-nowrap px-2"
-              >
-                Clear Filters
-              </button>
-            )}
+            <button
+              onClick={clearFilters}
+              disabled={!hasActiveFilters}
+              className={`w-full md:w-[110px] shrink-0 text-[11px] tracking-[0.08em] uppercase transition-colors duration-200 whitespace-nowrap px-2 ${
+                hasActiveFilters
+                  ? "text-[#6B6B6B] hover:text-black cursor-pointer"
+                  : "text-transparent cursor-default pointer-events-none"
+              }`}
+            >
+              Clear Filters
+            </button>
           </div>
 
           {!loading && (
