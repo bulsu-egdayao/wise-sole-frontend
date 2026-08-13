@@ -26,6 +26,7 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
   const [error, setError] = useState<string | null>(null);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  const [addAddon, setAddAddon] = useState(false);
   const { favorites, toggleFavorite } = useFavorites();
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
 
@@ -44,6 +45,7 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
         setProduct(p);
         setActiveImageIndex(0);
         setSelectedSize(null);
+        setAddAddon(false);
         setMessage(
           `Hi Wise Sole! I'm interested in ${p.name}. Is this still available?`
         );
@@ -77,7 +79,10 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
       return;
     }
 
-    const finalMessage = selectedSize ? `${message.trim()} (Size: ${selectedSize})` : message.trim();
+    const parts = [message.trim()];
+    if (selectedSize) parts.push(`(Size: ${selectedSize})`);
+    if (addAddon && product.addon_name) parts.push(`+ Add-on: ${product.addon_name} (${peso(product.addon_price!)})`);
+    const finalMessage = parts.join(" ");
 
     setSubmitting(true);
     try {
@@ -98,11 +103,17 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
   const currentPrice = product && isOnSale(product) ? peso(product.sale_price!) : product ? peso(product.price) : "";
   const needsSizeSelection = !!product && product.sizes && product.sizes.length > 0 && !selectedSize;
 
+  const basePriceNum = product ? parseFloat(isOnSale(product) ? product.sale_price! : product.price) : 0;
+  const addonPriceNum = product && product.addon_price ? parseFloat(product.addon_price) : 0;
+  const totalWithAddon = basePriceNum + addonPriceNum;
+
   const waLink = product
     ? `https://wa.me/639560929925?text=${encodeURIComponent(
         `Hi Wise Sole! I'm interested in ${product.name}${
           selectedSize ? `, size ${selectedSize},` : ""
-        } (${currentPrice}). Is this still available?`
+        } (${currentPrice})${
+          addAddon && product.addon_name ? ` plus the ${product.addon_name} add-on (${peso(product.addon_price!)}) — total ${peso(totalWithAddon)}` : ""
+        }. Is this still available?`
       )}`
     : "#";
 
@@ -276,6 +287,28 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
                 {selectedSize && (
                   <p className="text-[11px] text-[#6B6B6B] mt-2">
                     {product.sizes.find((s) => s.size === selectedSize)?.stock} in stock — size {selectedSize}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {product.addon_name && product.addon_price && (
+              <div className="mb-6 border border-[#EAEAEA] p-4">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={addAddon}
+                    onChange={(e) => setAddAddon(e.target.checked)}
+                    className="w-4 h-4 mt-0.5 accent-black shrink-0"
+                  />
+                  <span className="text-[13px]">
+                    Add <span className="font-medium">{product.addon_name}</span> for{" "}
+                    <span className="font-medium">{peso(product.addon_price)}</span>
+                  </span>
+                </label>
+                {addAddon && (
+                  <p className="text-[13px] font-medium mt-3 pt-3 border-t border-[#EAEAEA]">
+                    Total: {peso(totalWithAddon)}
                   </p>
                 )}
               </div>
