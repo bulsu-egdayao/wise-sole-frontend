@@ -22,6 +22,7 @@ export interface Vouch {
   name: string;
   rating: number;
   message: string;
+  image_path: string | null;
   status: "pending" | "approved" | "rejected";
   created_at: string;
 }
@@ -132,12 +133,23 @@ export async function getApprovedVouches(): Promise<Vouch[]> {
   return res.json();
 }
 
-// Public: anyone can submit a vouch (starts as "pending")
-export async function submitVouch(data: { name: string; rating: number; message: string }): Promise<Vouch> {
+// Public: anyone can submit a vouch (starts as "pending"). Photo is optional.
+export async function submitVouch(data: {
+  name: string;
+  rating: number;
+  message: string;
+  image?: File | null;
+}): Promise<Vouch> {
+  const formData = new FormData();
+  formData.append("name", data.name);
+  formData.append("rating", String(data.rating));
+  formData.append("message", data.message);
+  if (data.image) formData.append("image", data.image);
+
   const res = await fetch(`${API_URL}/vouches`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify(data),
+    headers: { Accept: "application/json" },
+    body: formData,
   });
   if (!res.ok) {
     const err = await res.json().catch(() => null);

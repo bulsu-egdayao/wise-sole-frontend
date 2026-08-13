@@ -28,6 +28,7 @@ export default function Legitimacy() {
   const [formName, setFormName] = useState("");
   const [formRating, setFormRating] = useState(5);
   const [formMessage, setFormMessage] = useState("");
+  const [formImage, setFormImage] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
@@ -51,11 +52,17 @@ export default function Legitimacy() {
     setSubmitting(true);
     setSubmitError(null);
     try {
-      await submitVouch({ name: formName.trim(), rating: formRating, message: formMessage.trim() });
+      await submitVouch({
+        name: formName.trim(),
+        rating: formRating,
+        message: formMessage.trim(),
+        image: formImage,
+      });
       setSubmitted(true);
       setFormName("");
       setFormRating(5);
       setFormMessage("");
+      setFormImage(null);
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "Failed to submit. Please try again.");
     } finally {
@@ -73,7 +80,7 @@ export default function Legitimacy() {
         <div className="max-w-[1000px] mx-auto px-6 py-14 md:py-18 text-center">
           <p className="text-[11px] tracking-[0.15em] uppercase text-[#6B6B6B] mb-3">Wise Sole</p>
           <h1 className="text-[26px] md:text-[34px] font-semibold mb-4">Buy With Confidence</h1>
-          <p className="text-[14px] text-[#6B6B6B] max-w-[540px] mx-auto leading-relaxed">
+         <p className="text-[14px] text-[#6B6B6B] max-w-[640px] mx-auto leading-relaxed whitespace-nowrap md:whitespace-normal">
             Honest feedback from real clients, and proof behind every kind of transaction we handle.
           </p>
           {avgRating !== null && (
@@ -153,6 +160,47 @@ export default function Legitimacy() {
                     />
                   </div>
 
+                  <div>
+                    <label className="block text-[10px] tracking-[0.08em] uppercase text-[#6B6B6B] mb-1.5">
+                      Photo — optional
+                    </label>
+
+                    {formImage ? (
+                      <div className="relative w-20 h-20">
+                        <img
+                          src={URL.createObjectURL(formImage)}
+                          alt=""
+                          className="w-full h-full object-cover border border-[#EAEAEA]"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setFormImage(null)}
+                          className="absolute -top-2 -right-2 w-5 h-5 flex items-center justify-center bg-black text-white text-[11px] rounded-full"
+                          aria-label="Remove photo"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="inline-flex items-center gap-2 text-[11px] tracking-[0.04em] border border-[#EAEAEA] px-3 py-2.5 cursor-pointer hover:border-black transition-colors duration-200">
+                        + Add a photo
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) setFormImage(file);
+                            e.target.value = "";
+                          }}
+                        />
+                      </label>
+                    )}
+                    <p className="text-[10px] text-[#6B6B6B] mt-1.5">
+                      A screenshot or product photo helps back up your vouch.
+                    </p>
+                  </div>
+
                   {submitError && <p className="text-[12px] text-red-600">{submitError}</p>}
 
                   <button
@@ -181,7 +229,20 @@ export default function Legitimacy() {
                       <p className="text-[13.5px] font-medium">{v.name}</p>
                       <Stars rating={v.rating} />
                     </div>
-                    <p className="text-[13px] text-[#6B6B6B] leading-relaxed">{v.message}</p>
+                    <p className="text-[13px] text-[#6B6B6B] leading-relaxed mb-3">{v.message}</p>
+                    {v.image_path && (
+                      <button
+                        onClick={() => setLightboxImage(legitimacyImageUrl(v.image_path!))}
+                        className="block w-24 h-24 overflow-hidden border border-[#EAEAEA]"
+                      >
+                        <img
+                          src={legitimacyImageUrl(v.image_path)}
+                          alt=""
+                          loading="lazy"
+                          className="w-full h-full object-cover"
+                        />
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>

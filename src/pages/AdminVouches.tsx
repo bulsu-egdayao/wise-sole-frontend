@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { getAllVouchesAdmin, updateVouchStatus, deleteVouch, type Vouch } from "../services/legitimacy";
+import { getAllVouchesAdmin, updateVouchStatus, deleteVouch, legitimacyImageUrl, type Vouch } from "../services/legitimacy";
 import { getToken } from "../services/auth";
 import { useConfirm } from "../hooks/useConfirm";
 
@@ -28,6 +28,7 @@ export default function AdminVouches({ onBack }: AdminVouchesProps) {
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | Vouch["status"]>("pending");
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
   const { confirm, ConfirmDialog } = useConfirm();
 
@@ -144,7 +145,16 @@ export default function AdminVouches({ onBack }: AdminVouchesProps) {
                     <p className="text-[11px] text-[#6B6B6B] whitespace-nowrap">{formatDate(vouch.created_at)}</p>
                   </div>
 
-                  <p className="text-[13px] text-black mb-4 leading-relaxed">{vouch.message}</p>
+                  <p className="text-[13px] text-black mb-3 leading-relaxed">{vouch.message}</p>
+
+                  {vouch.image_path && (
+                    <button
+                      onClick={() => setLightboxImage(legitimacyImageUrl(vouch.image_path!))}
+                      className="block w-20 h-20 mb-4 overflow-hidden border border-[#EAEAEA]"
+                    >
+                      <img src={legitimacyImageUrl(vouch.image_path)} alt="" className="w-full h-full object-cover" />
+                    </button>
+                  )}
 
                   <div className="flex items-center gap-2">
                     {(["approved", "pending", "rejected"] as const).map((s) => (
@@ -175,6 +185,23 @@ export default function AdminVouches({ onBack }: AdminVouchesProps) {
           )}
         </main>
       </div>
+
+      {lightboxImage && (
+        <div
+          className="fixed inset-0 z-[300] bg-black/90 flex items-center justify-center p-6"
+          onClick={() => setLightboxImage(null)}
+        >
+          <img src={lightboxImage} alt="" className="max-w-full max-h-full object-contain" />
+          <button
+            onClick={() => setLightboxImage(null)}
+            className="absolute top-6 right-6 text-white text-[28px] leading-none"
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       {ConfirmDialog}
     </>
   );
