@@ -428,12 +428,13 @@ export default function WiseSole() {
         <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-10 md:gap-x-8 md:gap-y-14">
           {featured.map((p, i) => (
             <Reveal key={p.id} delay={i * 60}>
-              <ProductCard
+            <ProductCard
                 product={p}
                 favorites={favorites}
                 toggleFavorite={toggleFavorite}
                 onClick={() => { window.location.href = `/product/${p.slug}`; }}
                 onQuickView={(prod) => setQuickViewProduct(prod)}
+                isPageLoading={loading}
               />
             </Reveal>
           ))}

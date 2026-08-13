@@ -62,9 +62,19 @@ interface ProductCardProps {
   toggleFavorite: (id: number) => void;
   onClick?: () => void;
   onQuickView?: (product: Product) => void;
+  // While true, blanks out the image area entirely instead of showing the
+  // picsum placeholder fallback — prevents dummy photos flashing during load.
+  isPageLoading?: boolean;
 }
 
-export default function ProductCard({ product, favorites, toggleFavorite, onClick, onQuickView }: ProductCardProps) {
+export default function ProductCard({
+  product,
+  favorites,
+  toggleFavorite,
+  onClick,
+  onQuickView,
+  isPageLoading = false,
+}: ProductCardProps) {
   const isFav = favorites.includes(product.id);
   const seed = `wsp${product.id}`;
   const img = productImage(product, seed);
@@ -73,18 +83,22 @@ export default function ProductCard({ product, favorites, toggleFavorite, onClic
   return (
     <div className="group flex flex-col cursor-pointer" onClick={onClick}>
       <div className="relative overflow-hidden bg-[#F5F5F5] aspect-[4/5]">
-        <img
-          src={img}
-          alt={product.name}
-          loading="lazy"
-          className="absolute inset-0 w-full h-full object-cover transition-all duration-500 ease-out group-hover:scale-[1.04] group-hover:opacity-0"
-        />
-        <img
-          src={img2}
-          alt={product.name}
-          loading="lazy"
-          className="absolute inset-0 w-full h-full object-cover opacity-0 scale-[1.04] transition-all duration-500 ease-out group-hover:opacity-100 group-hover:scale-100"
-        />
+        {!isPageLoading && (
+          <>
+            <img
+              src={img}
+              alt={product.name}
+              loading="lazy"
+              className="absolute inset-0 w-full h-full object-cover transition-all duration-500 ease-out group-hover:scale-[1.04] group-hover:opacity-0"
+            />
+            <img
+              src={img2}
+              alt={product.name}
+              loading="lazy"
+              className="absolute inset-0 w-full h-full object-cover opacity-0 scale-[1.04] transition-all duration-500 ease-out group-hover:opacity-100 group-hover:scale-100"
+            />
+          </>
+        )}
 
         {product.is_new && (
           <span className="absolute top-3 left-3 bg-black text-white text-[10px] tracking-[0.15em] uppercase px-2.5 py-1">
