@@ -34,6 +34,8 @@ export interface Product {
   description: string | null;
   price: string;
   sale_price: string | null;
+  addon_name: string | null;
+  addon_price: string | null;
   category_id: number;
   product_type_id: number | null;
   stock: number;

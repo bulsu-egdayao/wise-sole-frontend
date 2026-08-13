@@ -13,16 +13,18 @@ function authHeaders(): HeadersInit {
 
 export interface SizeFormRow {
   size: string;
-  stock: string; // kept as string in the form, converted to number on submit
+  stock: string;
 }
 
 export interface ProductFormData {
   name: string;
   description: string;
   price: string;
-  sale_price: string; // empty string = no sale
+  sale_price: string;
+  addon_name: string;
+  addon_price: string;
   category_id: string;
-  product_type_id: string; // empty string = no type selected
+  product_type_id: string;
   stock: string;
   is_available: boolean;
   is_featured: boolean;
@@ -30,13 +32,14 @@ export interface ProductFormData {
   sizes: SizeFormRow[];
 }
 
-// Converts the form's string-based sizes into the numeric shape the API expects
 function serializeForm(form: ProductFormData) {
   return {
     name: form.name,
     description: form.description,
     price: form.price,
     sale_price: form.sale_price === "" ? "" : form.sale_price,
+    addon_name: form.addon_name === "" ? "" : form.addon_name,
+    addon_price: form.addon_price === "" ? "" : form.addon_price,
     category_id: form.category_id,
     product_type_id: form.product_type_id === "" ? null : form.product_type_id,
     stock: form.stock,

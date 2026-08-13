@@ -8,7 +8,7 @@ import ImageCropModal from "../components/ImageCropModal";
 import { getProductTypes, type ProductType } from "../services/productTypes";
 
 interface ProductFormProps {
-  product: Product | null; // null = creating a new product, otherwise editing this one
+  product: Product | null;
   onSaved: () => void;
   onCancel: () => void;
 }
@@ -20,6 +20,8 @@ const emptyForm: ProductFormData = {
   description: "",
   price: "",
   sale_price: "",
+  addon_name: "",
+  addon_price: "",
   category_id: "",
   product_type_id: "",
   stock: "0",
@@ -51,6 +53,8 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
 
   const [availableTypes, setAvailableTypes] = useState<ProductType[]>([]);
   const [loadingTypes, setLoadingTypes] = useState(false);
+
+  const [showAddon, setShowAddon] = useState(false);
 
   const isEditing = product !== null;
 
@@ -93,6 +97,8 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
         description: product.description || "",
         price: product.price,
         sale_price: product.sale_price ?? "",
+        addon_name: product.addon_name ?? "",
+        addon_price: product.addon_price ?? "",
         category_id: String(product.category_id),
         product_type_id: product.product_type_id ? String(product.product_type_id) : "",
         stock: String(product.stock),
@@ -101,10 +107,12 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
         is_new: product.is_new,
         sizes: (product.sizes || []).map((s) => ({ size: s.size, stock: String(s.stock) })),
       });
+      setShowAddon(!!product.addon_name);
       setExistingImages([...(product.images || [])].sort((a, b) => a.sort_order - b.sort_order));
       setCurrentProductId(product.id);
     } else {
       setForm(emptyForm);
+      setShowAddon(false);
       setExistingImages([]);
       setCurrentProductId(null);
     }
@@ -246,14 +254,20 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
       return;
     }
 
+    if (showAddon && form.addon_name.trim() && !form.addon_price) {
+      setError("Please set a price for the add-on, or remove the add-on name.");
+      return;
+    }
+
     setSaving(true);
     try {
       let savedProduct: Product;
+      const submitForm = showAddon ? form : { ...form, addon_name: "", addon_price: "" };
 
       if (isEditing && product) {
-        savedProduct = await updateProduct(product.id, form);
+        savedProduct = await updateProduct(product.id, submitForm);
       } else {
-        savedProduct = await createProduct(form);
+        savedProduct = await createProduct(submitForm);
       }
 
       setCurrentProductId(savedProduct.id);
@@ -356,6 +370,59 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
               </p>
             )}
 
+            <div>
+              {!showAddon ? (
+                <button
+                  type="button"
+                  onClick={() => setShowAddon(true)}
+                  className="text-[11px] tracking-[0.08em] uppercase border border-[#EAEAEA] px-4 py-2.5 hover:border-black transition-colors duration-200"
+                >
+                  + Add a matching item (e.g. bottoms sold with this hoodie)
+                </button>
+              ) : (
+                <div className="border border-[#EAEAEA] p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="text-[11px] tracking-[0.08em] uppercase text-[#6B6B6B]">
+                      Add-on Item — optional
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowAddon(false);
+                        handleChange("addon_name", "");
+                        handleChange("addon_price", "");
+                      }}
+                      className="text-[11px] text-red-600 hover:opacity-60 transition-opacity"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-[#6B6B6B] mb-3">
+                    For products that also come with a matching piece from your supplier — e.g. a hoodie
+                    that also has matching pants available. Shown as an optional add-on on the product page.
+                  </p>
+                  <div className="grid grid-cols-[1fr_140px] gap-3">
+                    <input
+                      type="text"
+                      value={form.addon_name}
+                      onChange={(e) => handleChange("addon_name", e.target.value)}
+                      placeholder="e.g. Matching Sweatpants"
+                      className="bg-[#F5F5F5] border border-[#EAEAEA] px-3 py-2.5 text-[13px] outline-none focus:border-black transition-colors duration-200"
+                    />
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={form.addon_price}
+                      onChange={(e) => handleChange("addon_price", e.target.value)}
+                      placeholder="Price (₱)"
+                      className="bg-[#F5F5F5] border border-[#EAEAEA] px-3 py-2.5 text-[13px] outline-none focus:border-black transition-colors duration-200"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-[11px] tracking-[0.08em] uppercase text-[#6B6B6B] mb-1.5">
@@ -400,7 +467,7 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
               </div>
             </div>
 
-           {form.category_id && (
+            {form.category_id && (
               <div>
                 <label className="block text-[11px] tracking-[0.08em] uppercase text-[#6B6B6B] mb-1.5">
                   Type — optional
