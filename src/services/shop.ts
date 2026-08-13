@@ -6,6 +6,7 @@ export type SortOption = "newest" | "price_asc" | "price_desc" | "featured";
 
 export interface ShopFilters {
   category?: string; // category slug
+  type?: string; // product type slug
   search?: string;
   sort?: SortOption;
   page?: number;
@@ -19,6 +20,7 @@ export interface ShopFilters {
 export async function getShopProducts(filters: ShopFilters): Promise<PaginatedResponse<Product>> {
   const params = new URLSearchParams();
   if (filters.category) params.set("category", filters.category);
+  if (filters.type) params.set("type", filters.type);
   if (filters.search) params.set("search", filters.search);
   if (filters.sort) params.set("sort", filters.sort);
   if (filters.page) params.set("page", String(filters.page));
