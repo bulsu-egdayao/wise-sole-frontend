@@ -6,10 +6,20 @@ import ProductForm from "./ProductForm";
 import AdminCategories from "./AdminCategories";
 import AdminInquiries from "./AdminInquiries";
 import AdminSiteImages from "./AdminSiteImages";
+import AdminLegitimacy from "./AdminLegitimacy";
+import AdminVouches from "./AdminVouches";
 import { getToken } from "../services/auth";
 import type { Product } from "../types/product";
 
-type AdminView = "dashboard" | "products" | "productForm" | "categories" | "inquiries" | "siteImages";
+type AdminView =
+  | "dashboard"
+  | "products"
+  | "productForm"
+  | "categories"
+  | "inquiries"
+  | "siteImages"
+  | "legitimacy"
+  | "vouches";
 
 export default function AdminApp() {
   const [loggedIn, setLoggedIn] = useState<boolean>(!!getToken());
@@ -58,6 +68,14 @@ export default function AdminApp() {
     return <AdminSiteImages onBack={() => setView("dashboard")} />;
   }
 
+  if (view === "legitimacy") {
+    return <AdminLegitimacy onBack={() => setView("dashboard")} />;
+  }
+
+  if (view === "vouches") {
+    return <AdminVouches onBack={() => setView("dashboard")} />;
+  }
+
   return (
     <AdminDashboard
       onLogout={() => {
@@ -68,6 +86,8 @@ export default function AdminApp() {
       onNavigateCategories={() => setView("categories")}
       onNavigateInquiries={() => setView("inquiries")}
       onNavigateSiteImages={() => setView("siteImages")}
+      onNavigateLegitimacy={() => setView("legitimacy")}
+      onNavigateVouches={() => setView("vouches")}
     />
   );
 }

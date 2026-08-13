@@ -207,10 +207,11 @@ export default function WiseSole() {
 
   const waLink = (text: string) => `https://wa.me/639560929925?text=${encodeURIComponent(text)}`;
 
-  const navLinks = [
+ const navLinks = [
     { label: "Shop", href: "/shop" },
     { label: "Categories", href: "#categories" },
     { label: "About", href: "#about" },
+    { label: "Legitimacy", href: "/legitimacy" },
     { label: "FAQ", href: "/faq" },
     { label: "Contact", href: "#contact" },
   ];
@@ -340,11 +341,13 @@ export default function WiseSole() {
           <div className="max-w-[1440px] mx-auto px-5 md:px-10 pt-10 md:pt-16 pb-8">
             <div className="flex flex-col gap-6 md:gap-8">
               <div className="relative overflow-hidden bg-[#0a0a0a] min-h-[320px] md:min-h-[460px] flex items-end">
-                <img
-  src={siteImages.hero_main ? siteImageUrl(siteImages.hero_main) : `https://picsum.photos/seed/wshero/1600/550`}
-  alt="Wise Sole collection"
-  className="absolute inset-0 w-full h-full object-cover opacity-80"
-/>
+             {!loading && (
+  <img
+    src={siteImages.hero_main ? siteImageUrl(siteImages.hero_main) : `https://picsum.photos/seed/wshero/1600/550`}
+    alt="Wise Sole collection"
+    className="absolute inset-0 w-full h-full object-cover opacity-80"
+  />
+)}
 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
 <div className="relative z-10 p-7 md:p-10 w-full">
   <img src={LOGO_WHITE} alt="" className="h-16 md:h-20 w-auto mb-5 opacity-95" />
@@ -370,23 +373,27 @@ export default function WiseSole() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
                 <div className="relative overflow-hidden bg-[#F5F5F5] aspect-[3/2] group">
-                  <img
-                 src={siteImages.hero_side_1 ? siteImageUrl(siteImages.hero_side_1) : `https://picsum.photos/seed/wshero2/750/500`}
-                    alt=""
-                    loading="lazy"
-                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  />
+                {!loading && (
+    <img
+     src={siteImages.hero_side_1 ? siteImageUrl(siteImages.hero_side_1) : `https://picsum.photos/seed/wshero2/750/500`}
+      alt=""
+      loading="lazy"
+      className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+    />
+  )}
                   <div className="absolute bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-black/60 to-transparent">
-                    <p className="text-white text-[13px] tracking-[0.04em]">New In</p>
+                    <p className="text-white text-[13px] tracking-[0.04em]">The Latest Drop</p>
                   </div>
                 </div>
                 <div className="relative overflow-hidden bg-[#F5F5F5] aspect-[3/2] group">
-                  <img
-                   src={siteImages.hero_side_2 ? siteImageUrl(siteImages.hero_side_2) : `https://picsum.photos/seed/wshero3/750/500`}
-                    alt=""
-                    loading="lazy"
-                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  />
+                  {!loading && (
+    <img
+       src={siteImages.hero_side_2 ? siteImageUrl(siteImages.hero_side_2) : `https://picsum.photos/seed/wshero3/750/500`}
+      alt=""
+      loading="lazy"
+      className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+    />
+  )}
                   <div className="absolute bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-black/60 to-transparent">
                     <p className="text-white text-[13px] tracking-[0.04em]">The Finishing Touch</p>
                   </div>
@@ -515,8 +522,9 @@ export default function WiseSole() {
         <div className="max-w-[1440px] mx-auto px-5 md:px-10 py-16 md:py-24">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-16 items-center">
             <Reveal className="md:col-span-5 relative aspect-[4/5] overflow-hidden bg-[#F5F5F5]">
-              <img src={siteImages.about_photo ? siteImageUrl(siteImages.about_photo) : "https://picsum.photos/seed/wsabout/700/900"} alt="Wise Sole studio" loading="lazy" className="w-full h-full object-cover" />
-            </Reveal>
+{!loading && (
+                <img src={siteImages.about_photo ? siteImageUrl(siteImages.about_photo) : "https://picsum.photos/seed/wsabout/700/900"} alt="Wise Sole studio" loading="lazy" className="w-full h-full object-cover" />
+              )}            </Reveal>
             <Reveal className="md:col-span-7" delay={100}>
               <p className="text-[10px] tracking-[0.15em] uppercase text-[#6B6B6B] mb-3">About Wise Sole</p>
               <h2 className="text-[24px] md:text-[34px] font-semibold tracking-tight leading-tight mb-5 max-w-[560px]">
@@ -610,9 +618,14 @@ export default function WiseSole() {
             </div>
             <div>
               <p className="text-[11px] tracking-[0.1em] uppercase text-[#6B6B6B] mb-4">Contact</p>
-              <ul className="space-y-2.5 text-[13px] text-[#6B6B6B]">
+            <ul className="space-y-2.5 text-[13px] text-[#6B6B6B]">
                 <li>WhatsApp: 0956 092 9925</li>
                 <li>wisesole@gmail.com</li>
+                <li>
+                  <a href="/legitimacy" className="hover:text-black transition-colors duration-200">
+                    Proof of Legitimacy
+                  </a>
+                </li>
                 <li>
                   <a href="/faq" className="hover:text-black transition-colors duration-200">
                     FAQ &amp; How to Order

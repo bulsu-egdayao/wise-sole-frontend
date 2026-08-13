@@ -8,6 +8,7 @@ import Shop from './pages/Shop.tsx'
 import Favorites from './pages/Favorites.tsx'
 import CategoryPage from './pages/CategoryPage.tsx'
 import FAQ from './pages/FAQ.tsx'
+import Legitimacy from "./pages/Legitimacy";
 
 const path = window.location.pathname
 
@@ -34,8 +35,13 @@ function Root() {
     return <FAQ />
   }
 
+  if (path.startsWith('/legitimacy')) {
+    return <Legitimacy />
+  }
+
   if (path.startsWith('/shop')) {
     return <Shop />
+    
   }
 
   return <App />

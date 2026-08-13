@@ -20,10 +20,20 @@ interface AdminDashboardProps {
   onNavigateCategories: () => void;
   onNavigateInquiries: () => void;
   onNavigateSiteImages: () => void;
+  onNavigateLegitimacy: () => void;
+  onNavigateVouches: () => void;
 }
 const API_URL = import.meta.env.VITE_API_URL as string;
 
-export default function AdminDashboard({ onLogout, onNavigateProducts, onNavigateCategories, onNavigateInquiries, onNavigateSiteImages }: AdminDashboardProps) {
+export default function AdminDashboard({
+  onLogout,
+  onNavigateProducts,
+  onNavigateCategories,
+  onNavigateInquiries,
+  onNavigateSiteImages,
+  onNavigateLegitimacy,
+  onNavigateVouches,
+}: AdminDashboardProps) {
   const [user, setUser] = useState<AdminUser | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -93,8 +103,20 @@ export default function AdminDashboard({ onLogout, onNavigateProducts, onNavigat
             <p className="text-[11px] tracking-[0.15em] uppercase text-[#6B6B6B]">Wise Sole</p>
             <h1 className="text-[15px] font-semibold">Admin Dashboard</h1>
           </div>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 flex-wrap justify-end">
   {user && <span className="text-[13px] text-[#6B6B6B]">{user.name}</span>}
+  <button
+    onClick={onNavigateVouches}
+    className="text-[11px] tracking-[0.1em] uppercase border border-[#EAEAEA] px-4 py-2 hover:border-black transition-colors duration-200"
+  >
+    Vouches
+  </button>
+  <button
+    onClick={onNavigateLegitimacy}
+    className="text-[11px] tracking-[0.1em] uppercase border border-[#EAEAEA] px-4 py-2 hover:border-black transition-colors duration-200"
+  >
+    Legitimacy
+  </button>
   <button
     onClick={onNavigateSiteImages}
     className="text-[11px] tracking-[0.1em] uppercase border border-[#EAEAEA] px-4 py-2 hover:border-black transition-colors duration-200"
