@@ -61,6 +61,13 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
   }, []);
 
   useEffect(() => {
+    if (form.sizes.length > 0) {
+      const total = form.sizes.reduce((sum, s) => sum + (parseInt(s.stock) || 0), 0);
+      setForm((prev) => ({ ...prev, stock: String(total) }));
+    }
+  }, [form.sizes]);
+
+  useEffect(() => {
     if (product) {
       setForm({
         name: product.name,
@@ -342,16 +349,23 @@ const handleFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
                 <label className="block text-[11px] tracking-[0.08em] uppercase text-[#6B6B6B] mb-1.5">
                   Base Stock Quantity
                 </label>
-                <input
+              <input
                   type="number"
                   min="0"
                   value={form.stock}
                   onChange={(e) => handleChange("stock", e.target.value)}
                   required
-                  className="w-full bg-[#F5F5F5] border border-[#EAEAEA] px-4 py-3 text-[14px] outline-none focus:border-black transition-colors duration-200"
+                  readOnly={form.sizes.length > 0}
+                  className={`w-full border px-4 py-3 text-[14px] outline-none transition-colors duration-200 ${
+                    form.sizes.length > 0
+                      ? "bg-[#EAEAEA] border-[#EAEAEA] text-[#6B6B6B] cursor-not-allowed"
+                      : "bg-[#F5F5F5] border-[#EAEAEA] focus:border-black"
+                  }`}
                 />
                 <p className="text-[11px] text-[#6B6B6B] mt-1.5">
-                  Used when this product has no sizes below. If sizes are added, their stock is tracked separately.
+                  {form.sizes.length > 0
+                    ? "Auto-calculated as the total of all sizes' stock below."
+                    : "Used when this product has no sizes below. If sizes are added, their stock is tracked separately."}
                 </p>
               </div>
               <div>

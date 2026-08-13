@@ -248,7 +248,15 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
                   Select Size
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {product.sizes.map((s) => {
+                 {[...product.sizes]
+                    .sort((a, b) => {
+                      const numA = parseFloat(a.size);
+                      const numB = parseFloat(b.size);
+                      const bothNumeric = !isNaN(numA) && !isNaN(numB);
+                      if (bothNumeric) return numA - numB;
+                      return a.size.localeCompare(b.size);
+                    })
+                    .map((s) => {
                     const outOfStock = s.stock <= 0;
                     const active = selectedSize === s.size;
                     return (
