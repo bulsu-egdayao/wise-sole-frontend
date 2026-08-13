@@ -126,18 +126,26 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
     setForm((prev) => ({ ...prev, sizes: [...prev.sizes, { size: "", stock: "0" }] }));
   };
 
-  // Quick-add a whole preset range of sizes at once (skips any already present)
-  const addSizePreset = (presetSizes: string[]) => {
+  // Toggle a single preset size on/off — click adds it (stock starts at 0,
+  // editable below), click again removes it. No manual typing needed.
+  const toggleSize = (size: string) => {
     setForm((prev) => {
-      const existing = new Set(prev.sizes.map((s) => s.size.trim().toUpperCase()));
-      const toAdd = presetSizes
-        .filter((s) => !existing.has(s.toUpperCase()))
-        .map((s) => ({ size: s, stock: "0" }));
-      return { ...prev, sizes: [...prev.sizes, ...toAdd] };
+      const exists = prev.sizes.some((s) => s.size.trim().toUpperCase() === size.toUpperCase());
+      if (exists) {
+        return { ...prev, sizes: prev.sizes.filter((s) => s.size.trim().toUpperCase() !== size.toUpperCase()) };
+      }
+      return { ...prev, sizes: [...prev.sizes, { size, stock: "0" }] };
     });
   };
 
-  const SHOE_SIZES = Array.from({ length: 47 - 35 + 1 }, (_, i) => String(35 + i));
+  const isSizeSelected = (size: string) =>
+    form.sizes.some((s) => s.size.trim().toUpperCase() === size.toUpperCase());
+
+  // Shoe sizes 35–47 including half sizes (35, 35.5, 36, 36.5 ... 47)
+  const SHOE_SIZES: string[] = [];
+  for (let i = 35; i <= 47; i += 0.5) {
+    SHOE_SIZES.push(Number.isInteger(i) ? String(i) : String(i));
+  }
   const APPAREL_SIZES = ["XXS", "XS", "S", "M", "L", "XL", "XXL"];
 
   const selectedCategorySlug = categories.find((c) => String(c.id) === form.category_id)?.slug || "";
@@ -564,25 +572,29 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
               )}
 
               {(showShoePreset || showApparelPreset) && (
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {showShoePreset && (
-                    <button
-                      type="button"
-                      onClick={() => addSizePreset(SHOE_SIZES)}
-                      className="text-[11px] tracking-[0.04em] border border-[#EAEAEA] px-4 py-2.5 hover:border-black transition-colors duration-200"
-                    >
-                      + Fill Shoe Sizes (35–47)
-                    </button>
-                  )}
-                  {showApparelPreset && (
-                    <button
-                      type="button"
-                      onClick={() => addSizePreset(APPAREL_SIZES)}
-                      className="text-[11px] tracking-[0.04em] border border-[#EAEAEA] px-4 py-2.5 hover:border-black transition-colors duration-200"
-                    >
-                      + Fill Apparel Sizes (XXS–XXL)
-                    </button>
-                  )}
+                <div className="mb-4">
+                  <p className="text-[10px] tracking-[0.08em] uppercase text-[#6B6B6B] mb-2">
+                    Tap to select sizes
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(showShoePreset ? SHOE_SIZES : APPAREL_SIZES).map((size) => {
+                      const active = isSizeSelected(size);
+                      return (
+                        <button
+                          key={size}
+                          type="button"
+                          onClick={() => toggleSize(size)}
+                          className={`text-[12px] px-3 py-2 border transition-colors duration-200 ${
+                            active
+                              ? "bg-black text-white border-black"
+                              : "border-[#EAEAEA] text-black hover:border-black"
+                          }`}
+                        >
+                          {size}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 
