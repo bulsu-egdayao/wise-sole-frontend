@@ -20,15 +20,6 @@ function productImage(product: Product, fallbackSeed: string): string {
   return `https://picsum.photos/seed/${fallbackSeed}/700/900`;
 }
 
-function productImageSecondary(product: Product, fallbackSeed: string): string {
-  const sorted = [...(product.images || [])].sort((a, b) => a.sort_order - b.sort_order);
-  const secondary = sorted.find((img) => !img.is_primary) || sorted[1];
-  if (secondary) {
-    return resolveImagePath(secondary.image_path);
-  }
-  return `https://picsum.photos/seed/${fallbackSeed}b/700/900`;
-}
-
 export function peso(price: string | number) {
   const n = typeof price === "string" ? parseFloat(price) : price;
   return "₱" + n.toLocaleString("en-PH");
@@ -76,30 +67,21 @@ export default function ProductCard({
   const isFav = favorites.includes(product.id);
   const seed = `wsp${product.id}`;
   const img = productImage(product, seed);
-  const img2 = productImageSecondary(product, seed);
   const hasImage = !!(product.images && product.images.length > 0);
 
   return (
     <div className="group flex flex-col cursor-pointer" onClick={onClick}>
-      <div className="relative overflow-hidden bg-[#F5F5F5] aspect-[4/5]">
+      <div className="relative bg-[#F5F5F5]">
         {!isPageLoading && (
           hasImage ? (
-            <>
-              <img
-                src={img}
-                alt={product.name}
-                loading="lazy"
-                className="absolute inset-0 w-full h-full object-contain transition-opacity duration-500 ease-out group-hover:opacity-0"
-              />
-              <img
-                src={img2}
-                alt={product.name}
-                loading="lazy"
-                className="absolute inset-0 w-full h-full object-contain opacity-0 transition-opacity duration-500 ease-out group-hover:opacity-100"
-              />
-            </>
+            <img
+              src={img}
+              alt={product.name}
+              loading="lazy"
+              className="block w-full h-auto"
+            />
           ) : (
-            <div className="absolute inset-0 flex items-center justify-center">
+            <div className="aspect-[4/5] flex items-center justify-center">
               <span className="text-[#6B6B6B]/50 text-[10px] tracking-[0.1em] uppercase">Photo coming soon</span>
             </div>
           )

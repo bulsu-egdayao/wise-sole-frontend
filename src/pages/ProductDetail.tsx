@@ -178,11 +178,11 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
       <section className="max-w-[1440px] mx-auto px-5 md:px-10 py-10 md:py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-16">
           <div>
-            <div className="relative overflow-hidden bg-[#F5F5F5] aspect-[4/5] mb-3">
+            <div className="relative bg-[#F5F5F5] mb-3">
               <img
                 src={mainImageSrc}
                 alt={product.name}
-                className="w-full h-full object-contain transition-opacity duration-300"
+                className="block w-full h-auto"
               />
               {product.is_new && (
                 <span className="absolute top-4 left-4 bg-black text-white text-[10px] tracking-[0.15em] uppercase px-2.5 py-1">
