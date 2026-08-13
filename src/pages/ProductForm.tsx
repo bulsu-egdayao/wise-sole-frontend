@@ -400,28 +400,40 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
               </div>
             </div>
 
-            {form.category_id && (availableTypes.length > 0 || loadingTypes) && (
+           {form.category_id && (
               <div>
                 <label className="block text-[11px] tracking-[0.08em] uppercase text-[#6B6B6B] mb-1.5">
                   Type — optional
                 </label>
-                <select
-                  value={form.product_type_id}
-                  onChange={(e) => handleChange("product_type_id", e.target.value)}
-                  disabled={loadingTypes}
-                  className="w-full bg-[#F5F5F5] border border-[#EAEAEA] px-4 py-3 text-[14px] outline-none focus:border-black transition-colors duration-200 disabled:opacity-50"
-                >
-                  <option value="">No specific type</option>
-                  {availableTypes.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-[11px] text-[#6B6B6B] mt-1.5">
-                  Sub-category within {categories.find((c) => String(c.id) === form.category_id)?.name} — manage
-                  the list of types from the Categories page.
-                </p>
+                {loadingTypes ? (
+                  <div className="w-full bg-[#F5F5F5] border border-[#EAEAEA] px-4 py-3 text-[14px] text-[#6B6B6B]">
+                    Loading types…
+                  </div>
+                ) : availableTypes.length > 0 ? (
+                  <>
+                    <select
+                      value={form.product_type_id}
+                      onChange={(e) => handleChange("product_type_id", e.target.value)}
+                      className="w-full bg-[#F5F5F5] border border-[#EAEAEA] px-4 py-3 text-[14px] outline-none focus:border-black transition-colors duration-200"
+                    >
+                      <option value="">No specific type</option>
+                      {availableTypes.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-[11px] text-[#6B6B6B] mt-1.5">
+                      Sub-category within {categories.find((c) => String(c.id) === form.category_id)?.name} —
+                      manage the list of types from the Categories page.
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-[11px] text-[#6B6B6B]">
+                    No types added yet for {categories.find((c) => String(c.id) === form.category_id)?.name}.
+                    Add some from the Categories page if you'd like to tag this product with one.
+                  </p>
+                )}
               </div>
             )}
 
