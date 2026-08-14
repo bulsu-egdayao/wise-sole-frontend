@@ -149,7 +149,7 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
 
   const selectedCategorySlug = categories.find((c) => String(c.id) === form.category_id)?.slug || "";
   const showShoePreset = ["sneakers", "slides"].includes(selectedCategorySlug);
-  const showApparelPreset = ["hoodies", "shirts", "shorts"].includes(selectedCategorySlug);
+  const showApparelPreset = ["hoodies", "shirts", "shorts", "apparels"].includes(selectedCategorySlug);
 
   const updateSizeRow = (index: number, field: keyof SizeFormRow, value: string) => {
     setForm((prev) => ({
