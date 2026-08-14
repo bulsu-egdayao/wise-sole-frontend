@@ -11,8 +11,8 @@ interface AdminSiteImagesProps {
 
 const SLOTS: { key: SiteImageKey; label: string; hint: string }[] = [
   { key: "hero_main", label: "Hero Main Photo", hint: "The large image on the left of the homepage top section" },
-  { key: "hero_side_1", label: "Hero Side Photo 1", hint: '"The Lstest Drop" tile' },
-  { key: "hero_side_2", label: "Hero Side Photo 2", hint: '"Best in Wise Sole" tile' },
+  { key: "hero_side_1", label: "Hero Side Photo 1", hint: '"New Arrivals — Fall Drop" tile' },
+  { key: "hero_side_2", label: "Hero Side Photo 2", hint: '"Accessories, Reconsidered" tile' },
   { key: "about_photo", label: "About Section Photo", hint: "Shown next to the About Wise Sole text" },
 ];
 
@@ -118,11 +118,11 @@ export default function AdminSiteImages({ onBack }: AdminSiteImagesProps) {
                     <p className="text-[13px] font-medium mb-1">{slot.label}</p>
                     <p className="text-[11px] text-[#6B6B6B] mb-4">{slot.hint}</p>
 
-                    <div className="aspect-[4/3] bg-[#F5F5F5] mb-4 overflow-hidden">
+                    <div className="aspect-[4/3] bg-[#F5F5F5] mb-4 overflow-hidden flex items-center justify-center">
                       {currentPath ? (
-                        <img src={siteImageUrl(currentPath)} alt={slot.label} className="w-full h-full object-cover" />
+                        <img src={siteImageUrl(currentPath)} alt={slot.label} className="w-full h-full object-contain" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-[11px] text-[#6B6B6B]">
+                        <div className="text-[11px] text-[#6B6B6B]">
                           No image set — using placeholder
                         </div>
                       )}
