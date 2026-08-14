@@ -48,7 +48,6 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
   const [draggedPendingIndex, setDraggedPendingIndex] = useState<number | null>(null);
   const { confirm, ConfirmDialog } = useConfirm();
 
-  const [cropQueue, setCropQueue] = useState<File[]>([]);
   const [reCropIndex, setReCropIndex] = useState<number | null>(null);
 
   const [availableTypes, setAvailableTypes] = useState<ProductType[]>([]);
@@ -175,18 +174,9 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
     const files = e.target.files;
     const fileArray = files ? Array.from(files) : [];
     if (fileArray.length > 0) {
-      setCropQueue((prev) => [...prev, ...fileArray]);
+      setSelectedFiles((prev) => [...prev, ...fileArray]);
     }
     e.target.value = "";
-  };
-
-  const handleCropApplied = (croppedFile: File) => {
-    setSelectedFiles((prev) => [...prev, croppedFile]);
-    setCropQueue((prev) => prev.slice(1));
-  };
-
-  const handleCropCancelled = () => {
-    setCropQueue((prev) => prev.slice(1));
   };
 
   const handleReCropApplied = (croppedFile: File) => {
@@ -778,15 +768,6 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
           </form>
         </main>
       </div>
-
-      {cropQueue.length > 0 && (
-        <ImageCropModal
-          key={cropQueue[0].name + cropQueue[0].size}
-          file={cropQueue[0]}
-          onCancel={handleCropCancelled}
-          onApply={handleCropApplied}
-        />
-      )}
 
       {reCropIndex !== null && selectedFiles[reCropIndex] && (
         <ImageCropModal
