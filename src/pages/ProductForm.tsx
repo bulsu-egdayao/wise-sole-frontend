@@ -147,9 +147,16 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
   }
   const APPAREL_SIZES = ["XXS", "XS", "S", "M", "L", "XL", "XXL"];
 
-  const selectedCategorySlug = categories.find((c) => String(c.id) === form.category_id)?.slug || "";
-  const showShoePreset = ["sneakers", "slides"].includes(selectedCategorySlug);
-  const showApparelPreset = ["hoodies", "shirts", "shorts", "apparels"].includes(selectedCategorySlug);
+  const selectedCategory = categories.find((c) => String(c.id) === form.category_id);
+  const selectedCategoryName = (selectedCategory?.name || "").toLowerCase();
+  const selectedCategorySlug = (selectedCategory?.slug || "").toLowerCase();
+  const categoryText = `${selectedCategoryName} ${selectedCategorySlug}`;
+
+  const SHOE_KEYWORDS = ["sneaker", "shoe", "slide", "sandal", "boot"];
+  const APPAREL_KEYWORDS = ["hoodie", "shirt", "short", "apparel", "clothing", "top", "jacket", "pant"];
+
+  const showShoePreset = SHOE_KEYWORDS.some((kw) => categoryText.includes(kw));
+  const showApparelPreset = APPAREL_KEYWORDS.some((kw) => categoryText.includes(kw));
 
   const updateSizeRow = (index: number, field: keyof SizeFormRow, value: string) => {
     setForm((prev) => ({
