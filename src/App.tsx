@@ -415,7 +415,7 @@ useEffect(() => {
           <p className="text-[13px] text-[#6B6B6B]">{loadError}</p>
         )}
         {!loading && !loadError && featured.length === 0 && (
-          <p className="text-[13px] text-[#6B6B6B]">No featured products yet — mark a product as "Featured" in the admin dashboard.</p>
+          <p className="text-[13px] text-[#6B6B6B]">New featured picks coming soon.</p>
         )}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-10 md:gap-x-8 md:gap-y-14">
           {featured.map((p, i) => (
@@ -442,7 +442,7 @@ useEffect(() => {
           </Reveal>
 
           {!loading && !loadError && categories.length === 0 && (
-            <p className="text-[13px] text-[#6B6B6B] mb-6">No categories yet — add some from the admin dashboard.</p>
+            <p className="text-[13px] text-[#6B6B6B] mb-6">Categories coming soon.</p>
           )}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
             {categories.map((c, i) => (
@@ -502,7 +502,7 @@ useEffect(() => {
         </Reveal>
 
         {!loading && !loadError && newArrivals.length === 0 && (
-          <p className="text-[13px] text-[#6B6B6B] mb-6">No new arrivals yet — mark a product as "New" in the admin dashboard.</p>
+          <p className="text-[13px] text-[#6B6B6B] mb-6">New arrivals coming soon.</p>
         )}
         <div className="flex gap-4 md:gap-6 overflow-x-auto pb-4 -mx-5 px-5 md:mx-0 md:px-0 snap-x snap-mandatory scroll-smooth [&::-webkit-scrollbar]:hidden">
          {newArrivals.map((p) => (
@@ -534,10 +534,9 @@ useEffect(() => {
                 Founded in 2023, built around good taste.
               </h2>
               <p className="text-[14px] md:text-[15px] text-[#6B6B6B] leading-relaxed max-w-[520px] mb-6">
-                Wise Sole started as a small streetwear passion project and grew into a go-to spot for
-                sneakers, apparel, and accessories that don't take themselves too seriously. We keep the
-                catalog tight — every piece is chosen because it's genuinely worth wearing, not just
-                because it's trending. No clutter, no filler, just a lineup we'd actually reach for ourselves.
+                Wise Sole began as a small streetwear project and grew into a trusted source for
+                sneakers, apparel, and accessories worth owning. We keep the catalog tight. Every
+                piece is chosen with care, not chased for trends.
               </p>
               <a
                 href="/shop"
@@ -559,8 +558,8 @@ useEffect(() => {
               See something you like? Let's talk.
             </h2>
             <p className="text-[14px] text-white/60 leading-relaxed">
-              Every product page connects straight to WhatsApp — no accounts, no checkout forms.
-              Just tell us what you're after.
+              Every product page connects directly to WhatsApp. No accounts, no checkout forms.
+              Just tell us what you're looking for.
             </p>
           </Reveal>
 
@@ -604,7 +603,7 @@ useEffect(() => {
             <div className="md:col-span-1">
               <img src={LOGO_BLACK} alt="Wise Sole" className="h-10 w-auto mb-4" />
               <p className="text-[13px] text-[#6B6B6B] leading-relaxed max-w-[220px]">
-                Premium sneakers, streetwear, and accessories — curated, not mass-produced.
+                Premium sneakers, streetwear, and accessories, curated with care.
               </p>
             </div>
             <div>
