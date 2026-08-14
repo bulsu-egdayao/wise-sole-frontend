@@ -3,6 +3,7 @@ import type { SiteImageKey, SiteImagesMap } from "../services/siteImages";
 import { getSiteImages, uploadSiteImage, deleteSiteImage, siteImageUrl } from "../services/siteImages";
 import { getToken } from "../services/auth";
 import { useConfirm } from "../hooks/useConfirm";
+import ImageCropModal from "../components/ImageCropModal";
 
 interface AdminSiteImagesProps {
   onBack: () => void;
@@ -10,8 +11,8 @@ interface AdminSiteImagesProps {
 
 const SLOTS: { key: SiteImageKey; label: string; hint: string }[] = [
   { key: "hero_main", label: "Hero Main Photo", hint: "The large image on the left of the homepage top section" },
-  { key: "hero_side_1", label: "Hero Side Photo 1", hint: '"New Arrivals — Fall Drop" tile' },
-  { key: "hero_side_2", label: "Hero Side Photo 2", hint: '"Accessories, Reconsidered" tile' },
+  { key: "hero_side_1", label: "Hero Side Photo 1", hint: '"The Lstest Drop" tile' },
+  { key: "hero_side_2", label: "Hero Side Photo 2", hint: '"Best in Wise Sole" tile' },
   { key: "about_photo", label: "About Section Photo", hint: "Shown next to the About Wise Sole text" },
 ];
 
@@ -21,6 +22,8 @@ export default function AdminSiteImages({ onBack }: AdminSiteImagesProps) {
   const [error, setError] = useState<string | null>(null);
   const [uploadingKey, setUploadingKey] = useState<SiteImageKey | null>(null);
   const [deletingKey, setDeletingKey] = useState<SiteImageKey | null>(null);
+
+  const [cropTarget, setCropTarget] = useState<{ key: SiteImageKey; file: File } | null>(null);
 
   const { confirm, ConfirmDialog } = useConfirm();
 
@@ -54,6 +57,21 @@ export default function AdminSiteImages({ onBack }: AdminSiteImagesProps) {
     }
   };
 
+  const handleFileSelected = (key: SiteImageKey, file: File) => {
+    setCropTarget({ key, file });
+  };
+
+  const handleCropApplied = (croppedFile: File) => {
+    if (!cropTarget) return;
+    const key = cropTarget.key;
+    setCropTarget(null);
+    handleUpload(key, croppedFile);
+  };
+
+  const handleCropCancelled = () => {
+    setCropTarget(null);
+  };
+
   const handleDelete = async (key: SiteImageKey) => {
     if (!(await confirm("Remove this image and revert to the placeholder?"))) return;
     setDeletingKey(key);
@@ -83,7 +101,8 @@ export default function AdminSiteImages({ onBack }: AdminSiteImagesProps) {
         <main className="max-w-[900px] mx-auto px-6 py-10">
           <p className="text-[13px] text-[#6B6B6B] mb-8 max-w-[560px]">
             Replace the homepage's hero and about photos here. Anything you don't upload falls back to a
-            placeholder automatically — nothing breaks if a slot is empty.
+            placeholder automatically — nothing breaks if a slot is empty. You'll be able to crop each
+            photo before it uploads.
           </p>
 
           {error && <p className="text-[13px] text-red-600 mb-6">{error}</p>}
@@ -119,7 +138,7 @@ export default function AdminSiteImages({ onBack }: AdminSiteImagesProps) {
                           disabled={uploadingKey === slot.key}
                           onChange={(e) => {
                             const file = e.target.files?.[0];
-                            if (file) handleUpload(slot.key, file);
+                            if (file) handleFileSelected(slot.key, file);
                             e.target.value = "";
                           }}
                         />
@@ -141,6 +160,16 @@ export default function AdminSiteImages({ onBack }: AdminSiteImagesProps) {
           )}
         </main>
       </div>
+
+      {cropTarget && (
+        <ImageCropModal
+          key={cropTarget.file.name + cropTarget.file.size}
+          file={cropTarget.file}
+          onCancel={handleCropCancelled}
+          onApply={handleCropApplied}
+        />
+      )}
+
       {ConfirmDialog}
     </>
   );
