@@ -6,6 +6,8 @@ import QuickViewModal from "./components/QuickViewModal";
 import { useFavorites } from "./hooks/useFavorites";
 import { getSiteImages, siteImageUrl } from "./services/siteImages";
 import type { SiteImagesMap } from "./services/siteImages";
+import LOGO_BLACK from "./assets/wise-sole-logo-transparent.png";
+import LOGO_WHITE from "./assets/wise-sole-logo-white.png";
 // my 2 const logo
 
 // Placeholder image shown for products/categories that don't have a real photo yet
