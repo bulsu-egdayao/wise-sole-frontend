@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useFavorites } from "../hooks/useFavorites";
+import SiteHeader from "../components/SiteHeader";
 
 interface FAQItem {
   question: string;
@@ -87,12 +87,7 @@ const FAQS: FAQItem[] = [
 ];
 
 export default function FAQ() {
-  const { favorites } = useFavorites();
   const [openIndex, setOpenIndex] = useState<number | null>(0);
-
-  const goHome = () => {
-    window.location.href = "/";
-  };
 
   const toggle = (index: number) => {
     setOpenIndex((prev) => (prev === index ? null : index));
@@ -100,27 +95,7 @@ export default function FAQ() {
 
   return (
     <div style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" }} className="bg-white text-black min-h-screen w-full">
-      {/* HEADER */}
-      <header className="sticky top-0 z-50 bg-white border-b border-[#EAEAEA]">
-        <div className="max-w-[1440px] mx-auto px-5 md:px-10">
-          <div className="flex items-center justify-between h-[64px] md:h-[76px]">
-            <button onClick={goHome} className="text-[15px] font-semibold tracking-[0.08em]">
-              WISE SOLE
-            </button>
-            <div className="flex items-center gap-5">
-              <a href="/favorites" className="text-[11px] tracking-[0.12em] uppercase text-[#6B6B6B] hover:text-black transition-colors duration-200">
-                Favorites{favorites.length > 0 ? ` (${favorites.length})` : ""}
-              </a>
-              <button
-                onClick={goHome}
-                className="text-[11px] tracking-[0.12em] uppercase text-[#6B6B6B] hover:text-black transition-colors duration-200"
-              >
-                ← Home
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
+      <SiteHeader />
 
       {/* CONTENT */}
       <div className="max-w-[760px] mx-auto px-5 md:px-10 py-14 md:py-20">

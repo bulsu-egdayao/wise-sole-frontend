@@ -110,7 +110,7 @@ export default function AdminLegitimacy({ onBack }: AdminLegitimacyProps) {
     <>
       <div style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" }} className="min-h-screen bg-white text-black">
         <header className="sticky top-0 z-10 bg-white border-b border-[#EAEAEA]">
-          <div className="max-w-[1000px] mx-auto px-6 h-[64px] flex items-center gap-4">
+          <div className="max-w-[1200px] mx-auto px-6 h-[64px] flex items-center gap-4">
             <button onClick={onBack} className="text-[13px] text-[#6B6B6B] hover:text-black transition-colors duration-200">
               ← Dashboard
             </button>
@@ -118,7 +118,7 @@ export default function AdminLegitimacy({ onBack }: AdminLegitimacyProps) {
           </div>
         </header>
 
-        <main className="max-w-[1000px] mx-auto px-6 py-10">
+        <main className="max-w-[1200px] mx-auto px-6 py-10">
           <p className="text-[13px] text-[#6B6B6B] mb-8 max-w-[600px]">
             Organize proof-of-transaction photos into categories (e.g. Same Day Delivery, Meetups, Bulk
             Orders). These show on your public /legitimacy page so buyers can see you're a real, trusted

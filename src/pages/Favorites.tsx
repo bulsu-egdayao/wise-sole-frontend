@@ -4,6 +4,7 @@ import { getProductById } from "../services/productDetail";
 import { useFavorites } from "../hooks/useFavorites";
 import ProductCard from "../components/ProductCard";
 import QuickViewModal from "../components/QuickViewModal";
+import SiteHeader from "../components/SiteHeader";
 
 export default function Favorites() {
   const { favorites, toggleFavorite } = useFavorites();
@@ -33,31 +34,13 @@ export default function Favorites() {
       .finally(() => setLoading(false));
   }, [favorites]);
 
-  const goHome = () => {
-    window.location.href = "/";
-  };
-
   const goToProduct = (p: Product) => {
     window.location.href = `/product/${p.slug}`;
   };
 
   return (
     <div style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" }} className="bg-white text-black min-h-screen w-full">
-      <header className="sticky top-0 z-50 bg-white border-b border-[#EAEAEA]">
-        <div className="max-w-[1440px] mx-auto px-5 md:px-10">
-          <div className="flex items-center justify-between h-[64px] md:h-[76px]">
-            <button onClick={goHome} className="text-[15px] font-semibold tracking-[0.08em]">
-              WISE SOLE
-            </button>
-            <button
-              onClick={goHome}
-              className="text-[11px] tracking-[0.12em] uppercase text-[#6B6B6B] hover:text-black transition-colors duration-200"
-            >
-              ← Home
-            </button>
-          </div>
-        </div>
-      </header>
+      <SiteHeader />
 
       <div className="max-w-[1440px] mx-auto px-5 md:px-10 py-10 md:py-14">
         <p className="text-[10px] tracking-[0.15em] uppercase text-[#6B6B6B] mb-2">Saved For Later</p>
