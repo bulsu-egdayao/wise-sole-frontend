@@ -5,6 +5,7 @@ import { submitInquiry } from "../services/inquiries";
 import ProductCard, { peso, isOnSale, discountPercent } from "../components/ProductCard";
 import QuickViewModal from "../components/QuickViewModal";
 import { useFavorites } from "../hooks/useFavorites";
+import SiteHeader from "../components/SiteHeader";
 
 const API_URL = import.meta.env.VITE_API_URL as string;
 const STORAGE_URL = API_URL.replace(/\/api\/?$/, "");
@@ -178,26 +179,7 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
 
   return (
     <div style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" }} className="bg-white text-black min-h-screen w-full">
-      <header className="sticky top-0 z-50 bg-white border-b border-[#EAEAEA]">
-        <div className="max-w-[1440px] mx-auto px-5 md:px-10">
-          <div className="flex items-center justify-between h-[64px] md:h-[76px]">
-            <button onClick={goHome} className="text-[15px] font-semibold tracking-[0.08em]">
-              WISE SOLE
-            </button>
-            <div className="flex items-center gap-5">
-              <a href="/favorites" className="text-[11px] tracking-[0.12em] uppercase text-[#6B6B6B] hover:text-black transition-colors duration-200">
-                Favorites{favorites.length > 0 ? ` (${favorites.length})` : ""}
-              </a>
-              <button
-                onClick={goHome}
-                className="text-[11px] tracking-[0.12em] uppercase text-[#6B6B6B] hover:text-black transition-colors duration-200"
-              >
-                ← Back to Shop
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
+      <SiteHeader />
 
       <section className="max-w-[1440px] mx-auto px-5 md:px-10 py-10 md:py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-16">
@@ -277,7 +259,8 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {sortedSizes.map((s) => {
-                    const outOfStock = s.stock <= 0;
+                    const stockNum = Number(s.stock);
+                    const outOfStock = !Number.isFinite(stockNum) || stockNum <= 0;
                     const active = selectedSize === s.size;
                     return (
                       <button

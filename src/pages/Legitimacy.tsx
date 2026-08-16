@@ -7,6 +7,7 @@ import {
   type TransactionCategory,
   type Vouch,
 } from "../services/legitimacy";
+import SiteHeader from "../components/SiteHeader";
 
 function Stars({ rating, size = "text-[14px]" }: { rating: number; size?: string }) {
   return (
@@ -75,12 +76,14 @@ export default function Legitimacy() {
 
   return (
     <div style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" }} className="min-h-screen bg-white text-black">
+      <SiteHeader />
+
       {/* HERO */}
       <section className="border-b border-[#EAEAEA]">
         <div className="max-w-[1000px] mx-auto px-6 py-14 md:py-18 text-center">
           <p className="text-[11px] tracking-[0.15em] uppercase text-[#6B6B6B] mb-3">Wise Sole</p>
           <h1 className="text-[26px] md:text-[34px] font-semibold mb-4">Buy With Confidence</h1>
-         <p className="text-[14px] text-[#6B6B6B] max-w-[640px] mx-auto leading-relaxed whitespace-nowrap md:whitespace-normal">
+          <p className="text-[14px] text-[#6B6B6B] max-w-[540px] mx-auto leading-relaxed">
             Honest feedback from real clients, and proof behind every kind of transaction we handle.
           </p>
           {avgRating !== null && (
