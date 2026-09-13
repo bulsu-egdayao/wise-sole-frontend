@@ -28,6 +28,7 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [addAddon, setAddAddon] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const { favorites, toggleFavorite } = useFavorites();
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
 
@@ -56,6 +57,26 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
       .catch(() => setError("Product not found."))
       .finally(() => setLoading(false));
   }, [slug]);
+
+  const images = [...(product?.images || [])].sort((a, b) => a.sort_order - b.sort_order);
+  const hasRealImages = images.length > 0;
+
+  useEffect(() => {
+    if (!lightboxOpen) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLightboxOpen(false);
+      if (images.length > 1) {
+        if (e.key === "ArrowLeft") setActiveImageIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
+        if (e.key === "ArrowRight") setActiveImageIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
+      }
+    };
+    document.addEventListener("keydown", handleKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", handleKey);
+      document.body.style.overflow = "";
+    };
+  }, [lightboxOpen, images.length]);
 
   const goHome = () => {
     window.location.href = "/";
@@ -146,8 +167,6 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
     );
   }
 
-  const images = [...(product.images || [])].sort((a, b) => a.sort_order - b.sort_order);
-  const hasRealImages = images.length > 0;
   const seed = `wsp${product.id}`;
 
   const mainImageSrc = hasRealImages
@@ -178,18 +197,32 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
     : [];
 
   return (
-    <div style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" }} className="bg-white text-black min-h-screen w-full">
+    <div style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" }} className="bg-white text-black min-h-screen w-full pb-20 md:pb-0">
       <SiteHeader />
 
       <section className="max-w-[1440px] mx-auto px-5 md:px-10 py-10 md:py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-16">
           <div>
-            <div className="relative bg-[#F5F5F5] mb-3">
+            <div
+              onClick={() => hasRealImages && setLightboxOpen(true)}
+              className={`relative bg-[#F5F5F5] mb-3 group overflow-hidden ${hasRealImages ? "cursor-zoom-in" : ""}`}
+            >
               <img
                 src={mainImageSrc}
                 alt={product.name}
-                className="block w-full h-auto"
+                className="block w-full h-auto transition-transform duration-300 group-hover:scale-105"
               />
+              {hasRealImages && (
+                <div className="absolute bottom-3 right-3 bg-black/75 text-white text-[10px] tracking-[0.1em] uppercase px-2.5 py-1.5 flex items-center gap-1.5 opacity-90 transition-opacity">
+                  <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="11" cy="11" r="7" />
+                    <line x1="21" y1="21" x2="16.2" y2="16.2" />
+                    <line x1="11" y1="8" x2="11" y2="14" />
+                    <line x1="8" y1="11" x2="14" y2="11" />
+                  </svg>
+                  <span>Zoom</span>
+                </div>
+              )}
               {product.is_new && (
                 <span className="absolute top-4 left-4 bg-black text-white text-[10px] tracking-[0.15em] uppercase px-2.5 py-1">
                   New
@@ -443,6 +476,115 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
       )}
 
       <QuickViewModal product={quickViewProduct} onClose={() => setQuickViewProduct(null)} />
+
+      {/* LIGHTBOX MODAL */}
+      {lightboxOpen && hasRealImages && (
+        <div
+          className="fixed inset-0 z-[300] bg-black/95 flex flex-col justify-between p-4 md:p-8"
+          onClick={() => setLightboxOpen(false)}
+        >
+          {/* Header */}
+          <div className="w-full flex items-center justify-between text-white" onClick={(e) => e.stopPropagation()}>
+            <div>
+              <p className="text-[14px] font-semibold">{product.name}</p>
+              {images.length > 1 && (
+                <p className="text-[11px] text-white/60">
+                  Photo {activeImageIndex + 1} of {images.length}
+                </p>
+              )}
+            </div>
+            <button
+              onClick={() => setLightboxOpen(false)}
+              className="text-white hover:text-white/70 text-[32px] leading-none p-2"
+              aria-label="Close lightbox"
+            >
+              ×
+            </button>
+          </div>
+
+          {/* Main Image */}
+          <div className="relative flex-1 w-full flex items-center justify-center my-3" onClick={(e) => e.stopPropagation()}>
+            <img
+              src={mainImageSrc}
+              alt={product.name}
+              className="max-h-[75vh] max-w-full object-contain select-none"
+            />
+
+            {images.length > 1 && (
+              <>
+                <button
+                  onClick={() => setActiveImageIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1))}
+                  className="absolute left-1 md:left-6 top-1/2 -translate-y-1/2 w-10 h-10 md:w-12 md:h-12 flex items-center justify-center bg-black/60 hover:bg-black text-white text-[24px] transition-colors rounded-full"
+                  aria-label="Previous image"
+                >
+                  ‹
+                </button>
+                <button
+                  onClick={() => setActiveImageIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0))}
+                  className="absolute right-1 md:right-6 top-1/2 -translate-y-1/2 w-10 h-10 md:w-12 md:h-12 flex items-center justify-center bg-black/60 hover:bg-black text-white text-[24px] transition-colors rounded-full"
+                  aria-label="Next image"
+                >
+                  ›
+                </button>
+              </>
+            )}
+          </div>
+
+          {/* Thumbnails */}
+          {images.length > 1 && (
+            <div className="flex items-center justify-center gap-2 overflow-x-auto max-w-full pb-2" onClick={(e) => e.stopPropagation()}>
+              {images.map((img, idx) => (
+                <button
+                  key={img.id || idx}
+                  onClick={() => setActiveImageIndex(idx)}
+                  className={`w-12 h-12 md:w-16 md:h-16 shrink-0 border transition-all ${
+                    idx === activeImageIndex ? "border-white ring-2 ring-white opacity-100" : "border-white/30 opacity-50 hover:opacity-100"
+                  }`}
+                >
+                  <img src={imageUrl(img.image_path, seed)} alt="" className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* STICKY MOBILE INQUIRE BAR */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-[#EAEAEA] p-3 md:hidden flex items-center justify-between gap-3 shadow-[0_-2px_10px_rgba(0,0,0,0.06)]">
+        <div>
+          <p className="text-[10px] tracking-[0.1em] uppercase text-[#6B6B6B]">Price</p>
+          <div className="flex items-center gap-1.5">
+            <p className={`text-[15px] font-semibold ${isOnSale(product) ? "text-red-600" : "text-black"}`}>
+              {currentPrice}
+            </p>
+            {isOnSale(product) && (
+              <span className="text-[10px] text-[#6B6B6B] line-through">
+                {peso(product.price)}
+              </span>
+            )}
+          </div>
+        </div>
+
+        <a
+          href={needsSizeSelection ? undefined : waLink}
+          target="_blank"
+          rel="noreferrer"
+          onClick={(e) => {
+            if (needsSizeSelection) {
+              e.preventDefault();
+              alert("Please select a size first before inquiring.");
+              window.scrollTo({ top: 350, behavior: "smooth" });
+            }
+          }}
+          className={`flex-1 max-w-[210px] text-center text-[11px] tracking-[0.1em] uppercase py-3 font-medium transition-colors duration-200 ${
+            needsSizeSelection
+              ? "bg-[#EAEAEA] text-[#6B6B6B]"
+              : "bg-black text-white hover:bg-[#1a1a1a]"
+          }`}
+        >
+          Inquire on WhatsApp
+        </a>
+      </div>
     </div>
   );
 }

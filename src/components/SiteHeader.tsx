@@ -56,6 +56,7 @@ const waLink = (text: string) => `https://wa.me/639560929925?text=${encodeURICom
 export default function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [scrolled, setScrolled] = useState(false);
   const { favorites } = useFavorites();
 
@@ -127,13 +128,23 @@ export default function SiteHeader() {
             className="overflow-hidden transition-all duration-300 ease-out"
             style={{ maxHeight: searchOpen ? "68px" : "0px" }}
           >
-            <div className="pb-4">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (searchQuery.trim()) {
+                  window.location.href = `/shop?search=${encodeURIComponent(searchQuery.trim())}`;
+                }
+              }}
+              className="pb-4"
+            >
               <input
                 type="text"
-                placeholder="Search sneakers, bags, watches…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search sneakers, bags, watches… (Press Enter)"
                 className="w-full bg-[#F5F5F5] border border-[#EAEAEA] px-4 py-2.5 text-[13px] outline-none focus:border-black transition-colors duration-200"
               />
-            </div>
+            </form>
           </div>
         </div>
       </header>

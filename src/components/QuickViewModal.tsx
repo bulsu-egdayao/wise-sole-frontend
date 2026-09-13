@@ -5,23 +5,18 @@ import { peso, isOnSale, discountPercent } from "./ProductCard";
 const API_URL = import.meta.env.VITE_API_URL as string;
 const STORAGE_URL = API_URL.replace(/\/api\/?$/, "");
 
-function quickViewImage(product: Product): string {
-  const primary =
-    product.images?.find((img) => img.is_primary) || product.images?.[0];
-  if (primary) {
-    const path = primary.image_path;
-    if (path.startsWith("http://") || path.startsWith("https://")) return path;
-    return `${STORAGE_URL}/storage/${path}`;
-  }
-  return `https://picsum.photos/seed/wsp${product.id}/900/1100`;
-}
-
 interface QuickViewModalProps {
   product: Product | null;
   onClose: () => void;
 }
 
 export default function QuickViewModal({ product, onClose }: QuickViewModalProps) {
+  const [activeImageIndex, setActiveImageIndex] = React.useState(0);
+
+  useEffect(() => {
+    setActiveImageIndex(0);
+  }, [product?.id]);
+
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -35,6 +30,25 @@ export default function QuickViewModal({ product, onClose }: QuickViewModalProps
   }, [product, onClose]);
 
   if (!product) return null;
+
+  const images = [...(product.images || [])].sort((a, b) => a.sort_order - b.sort_order);
+  const hasMultipleImages = images.length > 1;
+
+  const currentImageSrc = images.length > 0
+    ? (images[activeImageIndex]?.image_path.startsWith("http")
+        ? images[activeImageIndex].image_path
+        : `${STORAGE_URL}/storage/${images[activeImageIndex].image_path}`)
+    : `https://picsum.photos/seed/wsp${product.id}/900/1100`;
+
+  const prevImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setActiveImageIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
+  };
+
+  const nextImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setActiveImageIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
+  };
 
   const waLink = `https://wa.me/639560929925?text=${encodeURIComponent(
     `Hi Wise Sole! I'm interested in ${product.name} (${isOnSale(product) ? peso(product.sale_price!) : peso(product.price)}). Is this still available?`
@@ -60,31 +74,72 @@ export default function QuickViewModal({ product, onClose }: QuickViewModalProps
         </button>
 
         <div className="grid grid-cols-1 md:grid-cols-2">
-          <div className="relative aspect-[4/5] bg-[#F5F5F5]">
-            <img
-              src={quickViewImage(product)}
-              alt={product.name}
-              loading="lazy"
-              className="w-full h-full object-contain"
-            />
-            {product.is_new && (
-              <span className="absolute top-4 left-4 bg-black text-white text-[10px] tracking-[0.15em] uppercase px-2.5 py-1">
-                New
-              </span>
-            )}
-            {!product.is_available && (
-              <span className="absolute top-4 left-4 bg-white text-black text-[10px] tracking-[0.15em] uppercase px-2.5 py-1 border border-[#EAEAEA]">
-                Sold Out
-              </span>
-            )}
-            {isOnSale(product) && (
-              <span
-                className={`absolute left-4 bg-red-600 text-white text-[10px] tracking-[0.15em] uppercase px-2.5 py-1 ${
-                  product.is_new || !product.is_available ? "top-12" : "top-4"
-                }`}
-              >
-                -{discountPercent(product)}% Off
-              </span>
+          <div className="flex flex-col bg-[#F5F5F5]">
+            <div className="relative aspect-[4/5] bg-[#F5F5F5] flex items-center justify-center overflow-hidden">
+              <img
+                src={currentImageSrc}
+                alt={product.name}
+                loading="lazy"
+                className="w-full h-full object-contain"
+              />
+              {product.is_new && (
+                <span className="absolute top-4 left-4 bg-black text-white text-[10px] tracking-[0.15em] uppercase px-2.5 py-1">
+                  New
+                </span>
+              )}
+              {!product.is_available && (
+                <span className="absolute top-4 left-4 bg-white text-black text-[10px] tracking-[0.15em] uppercase px-2.5 py-1 border border-[#EAEAEA]">
+                  Sold Out
+                </span>
+              )}
+              {isOnSale(product) && (
+                <span
+                  className={`absolute left-4 bg-red-600 text-white text-[10px] tracking-[0.15em] uppercase px-2.5 py-1 ${
+                    product.is_new || !product.is_available ? "top-12" : "top-4"
+                  }`}
+                >
+                  -{discountPercent(product)}% Off
+                </span>
+              )}
+
+              {hasMultipleImages && (
+                <>
+                  <button
+                    onClick={prevImage}
+                    aria-label="Previous image"
+                    className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-white/80 hover:bg-white shadow-sm transition-colors text-[14px]"
+                  >
+                    ‹
+                  </button>
+                  <button
+                    onClick={nextImage}
+                    aria-label="Next image"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-white/80 hover:bg-white shadow-sm transition-colors text-[14px]"
+                  >
+                    ›
+                  </button>
+                </>
+              )}
+            </div>
+
+            {hasMultipleImages && (
+              <div className="flex items-center justify-center gap-1.5 p-3 bg-white border-t border-[#EAEAEA] overflow-x-auto">
+                {images.map((img, idx) => (
+                  <button
+                    key={img.id || idx}
+                    onClick={() => setActiveImageIndex(idx)}
+                    className={`w-12 h-12 shrink-0 border transition-all ${
+                      idx === activeImageIndex ? "border-black ring-1 ring-black" : "border-[#EAEAEA] opacity-60 hover:opacity-100"
+                    }`}
+                  >
+                    <img
+                      src={img.image_path.startsWith("http") ? img.image_path : `${STORAGE_URL}/storage/${img.image_path}`}
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
             )}
           </div>
 
