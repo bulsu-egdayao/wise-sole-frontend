@@ -38,6 +38,7 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -378,6 +379,46 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
             >
               Inquire via WhatsApp
             </a>
+
+            {/* ALTERNATIVE INQUIRY & SHARE OPTIONS */}
+            <div className="grid grid-cols-2 gap-2.5 mb-3">
+              <a
+                href="https://m.me/61578547474371"
+                target="_blank"
+                rel="noreferrer"
+                className="border border-[#EAEAEA] text-center text-[10px] tracking-[0.08em] uppercase py-3 hover:border-black transition-colors duration-200 flex items-center justify-center gap-1.5"
+              >
+                <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="currentColor">
+                  <path d="M12 2C6.48 2 2 6.03 2 11c0 2.87 1.5 5.42 3.84 7.02V21l2.88-1.58c1.03.29 2.13.45 3.28.45 5.52 0 10-4.03 10-9s-4.48-9-10-9zm1.06 12.13-2.67-2.85-5.21 2.85 5.73-6.08 2.74 2.85 5.14-2.85-5.73 6.08z" />
+                </svg>
+                Messenger
+              </a>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (!product) return;
+                  const textToCopy = `Wise Sole - ${product.name}\nPrice: ${currentPrice}\nLink: ${window.location.href}`;
+                  navigator.clipboard.writeText(textToCopy).then(() => {
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2500);
+                  });
+                }}
+                className="border border-[#EAEAEA] text-center text-[10px] tracking-[0.08em] uppercase py-3 hover:border-black transition-colors duration-200 flex items-center justify-center gap-1.5"
+              >
+                {copied ? (
+                  <span className="text-black font-semibold">✓ Copied Link!</span>
+                ) : (
+                  <>
+                    <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="1.6">
+                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                    </svg>
+                    Copy Link
+                  </>
+                )}
+              </button>
+            </div>
 
             <button
               onClick={() => toggleFavorite(product.id)}
