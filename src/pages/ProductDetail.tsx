@@ -6,6 +6,7 @@ import ProductCard, { peso, isOnSale, discountPercent } from "../components/Prod
 import QuickViewModal from "../components/QuickViewModal";
 import { useFavorites } from "../hooks/useFavorites";
 import SiteHeader from "../components/SiteHeader";
+import { useCart } from "../context/CartContext";
 
 const API_URL = import.meta.env.VITE_API_URL as string;
 const STORAGE_URL = API_URL.replace(/\/api\/?$/, "");
@@ -30,6 +31,7 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
   const [addAddon, setAddAddon] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const { favorites, toggleFavorite } = useFavorites();
+  const { addToCart } = useCart();
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
 
   const [name, setName] = useState("");

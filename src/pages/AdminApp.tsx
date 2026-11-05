@@ -8,11 +8,15 @@ import AdminInquiries from "./AdminInquiries";
 import AdminSiteImages from "./AdminSiteImages";
 import AdminLegitimacy from "./AdminLegitimacy";
 import AdminVouches from "./AdminVouches";
+import AdminOrders from "./AdminOrders";
+import AdminVouchers from "./AdminVouchers";
 import { getToken } from "../services/auth";
 import type { Product } from "../types/product";
 
 type AdminView =
   | "dashboard"
+  | "orders"
+  | "vouchers"
   | "products"
   | "productForm"
   | "categories"
@@ -28,6 +32,14 @@ export default function AdminApp() {
 
   if (!loggedIn) {
     return <AdminLogin onLoginSuccess={() => setLoggedIn(true)} />;
+  }
+
+  if (view === "orders") {
+    return <AdminOrders onBack={() => setView("dashboard")} />;
+  }
+
+  if (view === "vouchers") {
+    return <AdminVouchers onBack={() => setView("dashboard")} />;
   }
 
   if (view === "products") {
@@ -82,6 +94,8 @@ export default function AdminApp() {
         setLoggedIn(false);
         setView("dashboard");
       }}
+      onNavigateOrders={() => setView("orders")}
+      onNavigateVouchers={() => setView("vouchers")}
       onNavigateProducts={() => setView("products")}
       onNavigateCategories={() => setView("categories")}
       onNavigateInquiries={() => setView("inquiries")}

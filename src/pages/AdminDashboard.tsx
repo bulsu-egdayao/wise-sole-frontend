@@ -21,6 +21,8 @@ interface Vouch {
 
 interface AdminDashboardProps {
   onLogout: () => void;
+  onNavigateOrders: () => void;
+  onNavigateVouchers: () => void;
   onNavigateProducts: () => void;
   onNavigateCategories: () => void;
   onNavigateInquiries: () => void;
@@ -28,6 +30,7 @@ interface AdminDashboardProps {
   onNavigateLegitimacy: () => void;
   onNavigateVouches: () => void;
 }
+
 const API_URL = import.meta.env.VITE_API_URL as string;
 
 function NavButton({
@@ -63,6 +66,8 @@ function NavButton({
 
 export default function AdminDashboard({
   onLogout,
+  onNavigateOrders,
+  onNavigateVouchers,
   onNavigateProducts,
   onNavigateCategories,
   onNavigateInquiries,
@@ -75,6 +80,7 @@ export default function AdminDashboard({
   const [categories, setCategories] = useState<Category[]>([]);
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [vouches, setVouches] = useState<Vouch[]>([]);
+  const [pendingOrdersCount, setPendingOrdersCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -101,12 +107,16 @@ export default function AdminDashboard({
       fetch(`${API_URL}/vouches/admin`, {
         headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
       }).then((r) => r.json()),
+      fetch(`${API_URL}/orders?status=pending_verification`, {
+        headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+      }).then((r) => r.json()).catch(() => ({ total: 0 })),
     ])
-      .then(([productsRes, categoriesRes, inquiriesRes, vouchesRes]) => {
+      .then(([productsRes, categoriesRes, inquiriesRes, vouchesRes, ordersRes]) => {
         setProducts(productsRes.data || []);
         setCategories(categoriesRes || []);
         setInquiries(inquiriesRes.data || []);
         setVouches(Array.isArray(vouchesRes) ? vouchesRes : []);
+        setPendingOrdersCount(ordersRes?.total || 0);
       })
       .catch((err) => {
         console.error(err);
@@ -142,15 +152,22 @@ export default function AdminDashboard({
   return (
     <div style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" }} className="min-h-screen bg-white text-black">
       <header className="sticky top-0 z-10 bg-white border-b border-[#EAEAEA]">
-        <div className="max-w-[1200px] mx-auto px-6 py-3 flex items-center justify-between flex-wrap gap-3">
+        <div className="max-w-[1280px] mx-auto px-6 py-3 flex items-center justify-between flex-wrap gap-3">
           <div>
             <p className="text-[11px] tracking-[0.15em] uppercase text-[#6B6B6B]">Wise Sole</p>
             <h1 className="text-[15px] font-semibold">Admin Dashboard</h1>
           </div>
 
-          <div className="flex items-center gap-5 flex-wrap justify-end">
+          <div className="flex items-center gap-4 flex-wrap justify-end">
             <div className="flex items-center gap-2">
-              <NavButton label="Manage Products" onClick={onNavigateProducts} variant="primary" />
+              <NavButton label="Orders" onClick={onNavigateOrders} badgeCount={pendingOrdersCount} variant="primary" />
+              <NavButton label="Vouchers" onClick={onNavigateVouchers} />
+            </div>
+
+            <div className="w-px h-5 bg-[#EAEAEA] hidden md:block" />
+
+            <div className="flex items-center gap-2">
+              <NavButton label="Products" onClick={onNavigateProducts} />
               <NavButton label="Categories" onClick={onNavigateCategories} />
             </div>
 
@@ -178,25 +195,30 @@ export default function AdminDashboard({
         </div>
       </header>
 
-      <main className="max-w-[1200px] mx-auto px-6 py-10">
+      <main className="max-w-[1280px] mx-auto px-6 py-10">
         {error && <p className="text-[13px] text-red-600 mb-6">{error}</p>}
 
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-12">
+        {/* STATS TILES */}
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-3.5 mb-12">
           {[
-            { label: "Total Products", value: totalProducts },
+            { label: "Pending Orders", value: pendingOrdersCount, highlight: true, onClick: onNavigateOrders },
+            { label: "New Inquiries", value: newInquiriesCount, highlight: true, onClick: onNavigateInquiries },
+            { label: "Pending Vouches", value: pendingVouchesCount, highlight: true, onClick: onNavigateVouches },
+            { label: "Total Products", value: totalProducts, onClick: onNavigateProducts },
             { label: "Available", value: availableProducts },
             { label: "Out of Stock", value: outOfStock },
-            { label: "New Inquiries", value: newInquiriesCount, highlight: true },
-            { label: "Pending Vouches", value: pendingVouchesCount, highlight: true },
           ].map((stat) => (
             <div
               key={stat.label}
-              className={`border p-5 ${stat.highlight && stat.value > 0 ? "border-black bg-black text-white" : "border-[#EAEAEA]"}`}
+              onClick={stat.onClick}
+              className={`border p-4 transition-all ${stat.onClick ? "cursor-pointer hover:shadow-xs" : ""} ${
+                stat.highlight && stat.value > 0 ? "border-black bg-black text-white" : "border-[#EAEAEA] bg-white"
+              }`}
             >
-              <p className={`text-[11px] tracking-[0.1em] uppercase mb-2 ${stat.highlight && stat.value > 0 ? "text-white/60" : "text-[#6B6B6B]"}`}>
+              <p className={`text-[10px] tracking-[0.1em] uppercase mb-1.5 ${stat.highlight && stat.value > 0 ? "text-white/60" : "text-[#6B6B6B]"}`}>
                 {stat.label}
               </p>
-              <p className="text-[28px] font-semibold">{stat.value}</p>
+              <p className="text-[24px] font-semibold">{stat.value}</p>
             </div>
           ))}
         </div>
@@ -214,7 +236,7 @@ export default function AdminDashboard({
                       <p className="text-[13px] font-medium">{p.name}</p>
                       <p className="text-[11px] text-[#6B6B6B]">{p.category?.name}</p>
                     </div>
-                    <p className="text-[13px]">₱{parseFloat(p.price).toLocaleString("en-PH")}</p>
+                    <p className="text-[13px]">₱{parseFloat(String(p.price)).toLocaleString("en-PH")}</p>
                   </div>
                 ))}
               </div>

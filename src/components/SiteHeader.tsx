@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useFavorites } from "../hooks/useFavorites";
+import { useCart } from "../context/CartContext";
 import LOGO_BLACK from "../assets/wise-sole-logo-transparent.png";
 
 interface IconProps {
@@ -19,6 +20,16 @@ function HeartIcon({ className, filled }: IconProps & { filled?: boolean }) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.6">
       <path d="M12 20.2s-7.5-4.6-9.7-9A5.2 5.2 0 0 1 12 6.4a5.2 5.2 0 0 1 9.7 4.8c-2.2 4.4-9.7 9-9.7 9Z" />
+    </svg>
+  );
+}
+
+function BagIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
+      <path d="M3 6h18" />
+      <path d="M16 10a4 4 0 0 1-8 0" />
     </svg>
   );
 }
@@ -47,6 +58,7 @@ const navLinks = [
   { label: "Categories", href: "/#categories" },
   { label: "About", href: "/#about" },
   { label: "Legitimacy", href: "/legitimacy" },
+  { label: "Track Order", href: "/track" },
   { label: "FAQ", href: "/faq" },
   { label: "Contact", href: "/#contact" },
 ];
@@ -59,6 +71,7 @@ export default function SiteHeader() {
   const [searchQuery, setSearchQuery] = useState("");
   const [scrolled, setScrolled] = useState(false);
   const { favorites } = useFavorites();
+  const { count, openCart } = useCart();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -101,6 +114,7 @@ export default function SiteHeader() {
               <button onClick={() => setSearchOpen((s) => !s)} aria-label="Search" className="p-2 transition-opacity hover:opacity-60">
                 <SearchIcon className="w-[18px] h-[18px]" />
               </button>
+              
               <a
                 href="/favorites"
                 aria-label="View favorites"
@@ -113,6 +127,22 @@ export default function SiteHeader() {
                   </span>
                 )}
               </a>
+
+              {/* SHOPPING BAG / CART BUTTON */}
+              <button
+                type="button"
+                onClick={openCart}
+                aria-label="View shopping bag"
+                className="relative p-2 transition-opacity hover:opacity-60"
+              >
+                <BagIcon className="w-[19px] h-[19px]" />
+                {count > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 bg-black text-white text-[9px] w-[16px] h-[16px] flex items-center justify-center rounded-full font-semibold">
+                    {count}
+                  </span>
+                )}
+              </button>
+
               <a
                 href={waLink("Hi Wise Sole! I'd like to know more about your collection.")}
                 target="_blank"
@@ -178,12 +208,22 @@ export default function SiteHeader() {
               </a>
             ))}
           </nav>
-          <div className="px-5 pt-6">
+          <div className="px-5 pt-6 space-y-3">
+            <button
+              onClick={() => {
+                setMenuOpen(false);
+                openCart();
+              }}
+              className="w-full text-center text-[11px] tracking-[0.12em] uppercase border border-black py-3 flex items-center justify-center gap-2"
+            >
+              <BagIcon className="w-4 h-4" />
+              <span>Shopping Bag ({count})</span>
+            </button>
             <a
               href={waLink("Hi Wise Sole! I'd like to know more about your collection.")}
               target="_blank"
               rel="noreferrer"
-              className="block text-center text-[11px] tracking-[0.12em] uppercase bg-black text-white py-3.5"
+              className="block text-center text-[11px] tracking-[0.12em] uppercase bg-black text-white py-3"
             >
               Inquire Now
             </a>

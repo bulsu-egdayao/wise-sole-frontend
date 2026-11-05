@@ -8,11 +8,15 @@ import Shop from './pages/Shop.tsx'
 import Favorites from './pages/Favorites.tsx'
 import CategoryPage from './pages/CategoryPage.tsx'
 import FAQ from './pages/FAQ.tsx'
-import Legitimacy from "./pages/Legitimacy";
+import Legitimacy from "./pages/Legitimacy"
+import Checkout from "./pages/Checkout"
+import OrderTracking from "./pages/OrderTracking"
+import { CartProvider } from "./context/CartContext"
+import CartDrawer from "./components/CartDrawer"
 
 const path = window.location.pathname
 
-function Root() {
+function Router() {
   if (path.startsWith('/admin')) {
     return <AdminApp />
   }
@@ -39,9 +43,16 @@ function Root() {
     return <Legitimacy />
   }
 
+  if (path.startsWith('/checkout')) {
+    return <Checkout />
+  }
+
+  if (path.startsWith('/track')) {
+    return <OrderTracking />
+  }
+
   if (path.startsWith('/shop')) {
     return <Shop />
-    
   }
 
   return <App />
@@ -49,6 +60,9 @@ function Root() {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <Root />
+    <CartProvider>
+      <Router />
+      <CartDrawer />
+    </CartProvider>
   </StrictMode>,
 )

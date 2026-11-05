@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
 import type { Product } from "../types/product";
+import { useCart } from "../context/CartContext";
 import { peso, isOnSale, discountPercent } from "./ProductCard";
 
 const API_URL = import.meta.env.VITE_API_URL as string;
@@ -11,6 +12,7 @@ interface QuickViewModalProps {
 }
 
 export default function QuickViewModal({ product, onClose }: QuickViewModalProps) {
+  const { addToCart } = useCart();
   const [activeImageIndex, setActiveImageIndex] = React.useState(0);
 
   useEffect(() => {
