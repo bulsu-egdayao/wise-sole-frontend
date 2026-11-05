@@ -363,6 +363,31 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
               </span>
             </div>
 
+            {/* ADD TO SHOPPING BAG BUTTON */}
+            <button
+              type="button"
+              disabled={!product.is_available}
+              onClick={() => {
+                if (needsSizeSelection) {
+                  alert("Please select a size first.");
+                  return;
+                }
+                addToCart(product, selectedSize || null, 1);
+              }}
+              className={`w-full text-center text-[12px] tracking-[0.14em] uppercase py-4 mb-2.5 transition-colors duration-200 font-semibold shadow-xs flex items-center justify-center gap-2 ${
+                !product.is_available
+                  ? "bg-[#EAEAEA] text-[#999] cursor-not-allowed"
+                  : "bg-black text-white hover:bg-[#222]"
+              }`}
+            >
+              <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
+                <path d="M3 6h18" />
+                <path d="M16 10a4 4 0 0 1-8 0" />
+              </svg>
+              <span>{!product.is_available ? "Sold Out" : "Add to Shopping Bag"}</span>
+            </button>
+
             <a
               href={needsSizeSelection ? undefined : waLink}
               target="_blank"
@@ -373,11 +398,7 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
                   alert("Please select a size first.");
                 }
               }}
-              className={`block text-center text-[11px] tracking-[0.12em] uppercase py-4 mb-3 transition-colors duration-200 ${
-                needsSizeSelection
-                  ? "bg-[#EAEAEA] text-[#6B6B6B] cursor-not-allowed"
-                  : "bg-black text-white hover:bg-[#1a1a1a]"
-              }`}
+              className="block text-center text-[11px] tracking-[0.12em] uppercase py-3 mb-3 border border-black text-black hover:bg-black hover:text-white transition-colors duration-200"
             >
               Inquire via WhatsApp
             </a>
@@ -608,25 +629,25 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
           </div>
         </div>
 
-        <a
-          href={needsSizeSelection ? undefined : waLink}
-          target="_blank"
-          rel="noreferrer"
-          onClick={(e) => {
+        <button
+          type="button"
+          disabled={!product.is_available}
+          onClick={() => {
             if (needsSizeSelection) {
-              e.preventDefault();
-              alert("Please select a size first before inquiring.");
+              alert("Please select a size first.");
               window.scrollTo({ top: 350, behavior: "smooth" });
+              return;
             }
+            addToCart(product, selectedSize || null, 1);
           }}
-          className={`flex-1 max-w-[210px] text-center text-[11px] tracking-[0.1em] uppercase py-3 font-medium transition-colors duration-200 ${
-            needsSizeSelection
-              ? "bg-[#EAEAEA] text-[#6B6B6B]"
-              : "bg-black text-white hover:bg-[#1a1a1a]"
+          className={`flex-1 max-w-[210px] text-center text-[11px] tracking-[0.12em] uppercase py-3 font-semibold transition-colors duration-200 flex items-center justify-center gap-1.5 ${
+            !product.is_available
+              ? "bg-[#EAEAEA] text-[#999]"
+              : "bg-black text-white hover:bg-[#222]"
           }`}
         >
-          Inquire on WhatsApp
-        </a>
+          <span>{!product.is_available ? "Sold Out" : "Add to Bag"}</span>
+        </button>
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 import React from "react";
 import type { Product } from "../types/product";
+import { useCart } from "../context/CartContext";
 
 const API_URL = import.meta.env.VITE_API_URL as string;
 const STORAGE_URL = API_URL.replace(/\/api\/?$/, "");
@@ -65,6 +66,7 @@ export default function ProductCard({
   isPageLoading = false,
 }: ProductCardProps) {
   const isFav = favorites.includes(product.id);
+  const { addToCart } = useCart();
   const seed = `wsp${product.id}`;
   const img = productImage(product, seed);
   const hasImage = !!(product.images && product.images.length > 0);
@@ -118,15 +120,27 @@ export default function ProductCard({
           <HeartIcon className="w-4 h-4" filled={isFav} />
         </button>
 
-        <div className="absolute bottom-0 left-0 right-0 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out">
+        <div className="absolute bottom-0 left-0 right-0 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out grid grid-cols-2 gap-px bg-white/20">
           <button
+            type="button"
             onClick={(e) => {
               e.stopPropagation();
               onQuickView?.(product);
             }}
-            className="w-full bg-black text-white text-[11px] tracking-[0.15em] uppercase py-3 hover:bg-[#1a1a1a] transition-colors duration-200"
+            className="bg-black/90 text-white text-[10px] tracking-[0.12em] uppercase py-3 hover:bg-black transition-colors"
           >
             Quick View
+          </button>
+          <button
+            type="button"
+            disabled={!product.is_available}
+            onClick={(e) => {
+              e.stopPropagation();
+              addToCart(product, null, 1);
+            }}
+            className="bg-black text-white text-[10px] tracking-[0.12em] uppercase py-3 hover:bg-[#222] transition-colors border-l border-white/20"
+          >
+            {!product.is_available ? "Sold Out" : "+ Add to Bag"}
           </button>
         </div>
       </div>
