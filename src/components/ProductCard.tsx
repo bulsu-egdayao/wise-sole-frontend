@@ -71,17 +71,17 @@ export default function ProductCard({
 
   return (
     <div className="group flex flex-col cursor-pointer" onClick={onClick}>
-      <div className="relative bg-[#F5F5F5] overflow-hidden">
+      <div className="relative bg-[#F5F5F5] overflow-hidden aspect-[4/5]">
         {!isPageLoading && (
           hasImage ? (
             <img
               src={img}
               alt={product.name}
               loading="lazy"
-              className="block w-full h-auto"
+              className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
             />
           ) : (
-            <div className="aspect-[4/5] flex items-center justify-center">
+            <div className="w-full h-full flex items-center justify-center">
               <span className="text-[#6B6B6B]/50 text-[10px] tracking-[0.1em] uppercase">Photo coming soon</span>
             </div>
           )

@@ -255,7 +255,7 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
                       i === activeImageIndex ? "opacity-100 ring-1 ring-black" : "opacity-60 hover:opacity-90"
                     }`}
                   >
-                    <img src={imageUrl(img.image_path, seed)} alt="" loading="lazy" className="w-full h-full object-contain" />
+                    <img src={imageUrl(img.image_path, seed)} alt="" loading="lazy" className="w-full h-full object-cover" />
                   </button>
                 ))}
               </div>

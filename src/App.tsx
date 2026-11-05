@@ -376,29 +376,43 @@ useEffect(() => {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-              <a href="#new-arrivals" className="relative overflow-hidden bg-[#F5F5F5] aspect-[3/2] group block flex items-center justify-center">
-                {!loading && (
-    <img
-     src={siteImages.hero_side_1 ? siteImageUrl(siteImages.hero_side_1) : `https://picsum.photos/seed/wshero2/750/500`}
-      alt=""
-      loading="lazy"
-      className="w-full h-full object-contain"
-    />
-  )}
-                  <div className="absolute bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-black/60 to-transparent">
+                <a
+                  href="#new-arrivals"
+                  className="relative overflow-hidden bg-[#F5F5F5] aspect-[3/2] group block"
+                >
+                  {!loading && (
+                    <img
+                      src={
+                        siteImages.hero_side_1
+                          ? siteImageUrl(siteImages.hero_side_1)
+                          : `https://picsum.photos/seed/wshero2/750/500`
+                      }
+                      alt="The Latest Drop"
+                      loading="lazy"
+                      className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                    />
+                  )}
+                  <div className="absolute bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-black/60 to-transparent pointer-events-none">
                     <p className="text-white text-[13px] tracking-[0.04em]">The Latest Drop</p>
                   </div>
                 </a>
-              <a href="#featured" className="relative overflow-hidden bg-[#F5F5F5] aspect-[3/2] group block flex items-center justify-center">
+                <a
+                  href="#featured"
+                  className="relative overflow-hidden bg-[#F5F5F5] aspect-[3/2] group block"
+                >
                   {!loading && (
-    <img
-       src={siteImages.hero_side_2 ? siteImageUrl(siteImages.hero_side_2) : `https://picsum.photos/seed/wshero3/750/500`}
-      alt=""
-      loading="lazy"
-      className="w-full h-full object-contain"
-    />
-  )}
-   <div className="absolute bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-black/60 to-transparent">
+                    <img
+                      src={
+                        siteImages.hero_side_2
+                          ? siteImageUrl(siteImages.hero_side_2)
+                          : `https://picsum.photos/seed/wshero3/750/500`
+                      }
+                      alt="Best Sellers"
+                      loading="lazy"
+                      className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                    />
+                  )}
+                  <div className="absolute bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-black/60 to-transparent pointer-events-none">
                     <p className="text-white text-[13px] tracking-[0.04em]">Best Sellers</p>
                   </div>
                 </a>

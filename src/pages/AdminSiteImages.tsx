@@ -120,7 +120,7 @@ export default function AdminSiteImages({ onBack }: AdminSiteImagesProps) {
 
                     <div className="aspect-[4/3] bg-[#F5F5F5] mb-4 overflow-hidden flex items-center justify-center">
                       {currentPath ? (
-                        <img src={siteImageUrl(currentPath)} alt={slot.label} className="w-full h-full object-contain" />
+                        <img src={siteImageUrl(currentPath)} alt={slot.label} className="w-full h-full object-cover" />
                       ) : (
                         <div className="text-[11px] text-[#6B6B6B]">
                           No image set — using placeholder
