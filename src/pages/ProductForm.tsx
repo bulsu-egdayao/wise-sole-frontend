@@ -62,6 +62,7 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
   const [existingImages, setExistingImages] = useState<ProductImage[]>(product?.images || []);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploadingImages, setUploadingImages] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<string | null>(null);
   const [reorderingImages, setReorderingImages] = useState(false);
   const [deletingImageId, setDeletingImageId] = useState<number | null>(null);
   const [currentProductId, setCurrentProductId] = useState<number | null>(product?.id ?? null);
@@ -388,8 +389,11 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
 
       if (selectedFiles.length > 0) {
         setUploadingImages(true);
-        await uploadProductImages(savedProduct.id, selectedFiles);
+        await uploadProductImages(savedProduct.id, selectedFiles, (curr, total) => {
+          setUploadProgress(`Uploading photo ${curr} of ${total}…`);
+        });
         setUploadingImages(false);
+        setUploadProgress(null);
       }
 
       onSaved();
@@ -398,6 +402,7 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
     } finally {
       setSaving(false);
       setUploadingImages(false);
+      setUploadProgress(null);
     }
   };
 
@@ -999,9 +1004,7 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
                 className="bg-black text-white text-[11px] tracking-[0.12em] uppercase px-6 py-3.5 hover:bg-[#1a1a1a] transition-colors duration-200 disabled:opacity-50"
               >
                 {saving
-                  ? uploadingImages
-                    ? "Uploading images…"
-                    : "Saving…"
+                  ? uploadProgress || (uploadingImages ? "Uploading images…" : "Saving…")
                   : isEditing
                   ? "Save Changes"
                   : "Create Product"}

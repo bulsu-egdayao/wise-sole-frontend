@@ -20,88 +20,98 @@ function authHeaders(): HeadersInit {
 }
 
 /**
- * Optimizes large phone photos (e.g. 5MB-10MB 4K photos) down to crisp ~2200px
+ * Optimizes large phone photos (e.g. 5MB-10MB 4K photos) down to crisp ~1800px
  * max dimension, preventing payload exceed errors (413 / CORS failure)
  * while preserving high fidelity product details.
  */
 async function optimizeProductImage(file: File): Promise<File> {
-  // If already under 1.5MB, keep original file untouched
-  if (file.size <= 1.5 * 1024 * 1024) {
+  // If already under 1MB, keep original file untouched
+  if (file.size <= 1024 * 1024) {
     return file;
   }
 
   return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        const maxDimension = 2200;
-        let { width, height } = img;
-        if (width > maxDimension || height > maxDimension) {
-          if (width > height) {
-            height = Math.round((height * maxDimension) / width);
-            width = maxDimension;
-          } else {
-            width = Math.round((width * maxDimension) / height);
-            height = maxDimension;
-          }
-        }
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        if (ctx) {
-          ctx.drawImage(img, 0, 0, width, height);
-          canvas.toBlob(
-            (blob) => {
-              if (blob) {
-                const optimized = new File([blob], file.name.replace(/\.[^.]+$/, ".jpg"), {
-                  type: "image/jpeg",
-                  lastModified: Date.now(),
-                });
-                resolve(optimized);
+    try {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          try {
+            const maxDimension = 1800;
+            let { width, height } = img;
+            if (width > maxDimension || height > maxDimension) {
+              if (width > height) {
+                height = Math.round((height * maxDimension) / width);
+                width = maxDimension;
               } else {
-                resolve(file);
+                width = Math.round((width * maxDimension) / height);
+                height = maxDimension;
               }
-            },
-            "image/jpeg",
-            0.88
-          );
-        } else {
-          resolve(file);
-        }
+            }
+            const canvas = document.createElement("canvas");
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext("2d");
+            if (ctx) {
+              ctx.drawImage(img, 0, 0, width, height);
+              canvas.toBlob(
+                (blob) => {
+                  if (blob) {
+                    const optimized = new File([blob], file.name.replace(/\.[^.]+$/, ".jpg"), {
+                      type: "image/jpeg",
+                      lastModified: Date.now(),
+                    });
+                    resolve(optimized);
+                  } else {
+                    resolve(file);
+                  }
+                },
+                "image/jpeg",
+                0.84
+              );
+            } else {
+              resolve(file);
+            }
+          } catch {
+            resolve(file);
+          }
+        };
+        img.onerror = () => resolve(file);
+        img.src = e.target?.result as string;
       };
-      img.onerror = () => resolve(file);
-      img.src = e.target?.result as string;
-    };
-    reader.onerror = () => resolve(file);
-    reader.readAsDataURL(file);
+      reader.onerror = () => resolve(file);
+      reader.readAsDataURL(file);
+    } catch {
+      resolve(file);
+    }
   });
 }
 
-export async function uploadProductImages(productId: number, files: File[]): Promise<Product> {
+export async function uploadProductImages(
+  productId: number,
+  files: File[],
+  onProgress?: (current: number, total: number) => void
+): Promise<Product> {
   if (files.length === 0) {
     const res = await fetch(`${API_URL}/products/${productId}`);
     return res.json();
   }
 
-  // Optimize files to avoid server 413 or timeout
-  const processedFiles: File[] = [];
-  for (const f of files) {
-    const optimized = await optimizeProductImage(f);
-    processedFiles.push(optimized);
-  }
-
-  // Upload in chunks of 2 to guarantee successful payloads on any connection
   let lastProduct: Product | null = null;
-  const chunkSize = 2;
 
-  for (let i = 0; i < processedFiles.length; i += chunkSize) {
-    const chunk = processedFiles.slice(i, i + chunkSize);
+  // Upload 1 image per request sequentially to guarantee zero payload or memory limits
+  for (let i = 0; i < files.length; i++) {
+    onProgress?.(i + 1, files.length);
+
+    let processedFile: File;
+    try {
+      processedFile = await optimizeProductImage(files[i]);
+    } catch {
+      processedFile = files[i];
+    }
+
     const formData = new FormData();
-    chunk.forEach((file) => {
-      formData.append("images[]", file);
-    });
+    formData.append("images[]", processedFile);
 
     const res = await fetch(`${API_URL}/products/${productId}/images`, {
       method: "POST",
@@ -111,7 +121,7 @@ export async function uploadProductImages(productId: number, files: File[]): Pro
 
     if (!res.ok) {
       const data = await res.json().catch(() => null);
-      throw new Error(data?.message || "Failed to upload images");
+      throw new Error(data?.message || `Failed to upload photo ${i + 1} of ${files.length}. Please try again.`);
     }
 
     lastProduct = await res.json();
