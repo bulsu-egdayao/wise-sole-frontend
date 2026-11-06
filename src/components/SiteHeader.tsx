@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useFavorites } from "../hooks/useFavorites";
 import { useCart } from "../context/CartContext";
+import { useAuth } from "../context/AuthContext";
 import LOGO_BLACK from "../assets/wise-sole-logo-transparent.png";
 
 interface IconProps {
@@ -34,6 +35,15 @@ function BagIcon({ className }: IconProps) {
   );
 }
 
+function UserIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+    </svg>
+  );
+}
+
 function MenuIcon({ className, open }: IconProps & { open?: boolean }) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
@@ -58,12 +68,11 @@ const navLinks = [
   { label: "Categories", href: "/#categories" },
   { label: "About", href: "/#about" },
   { label: "Legitimacy", href: "/legitimacy" },
+  { label: "My Purchases", href: "/my-orders" },
   { label: "Track Order", href: "/track" },
   { label: "FAQ", href: "/faq" },
   { label: "Contact", href: "/#contact" },
 ];
-
-const waLink = (text: string) => `https://wa.me/639560929925?text=${encodeURIComponent(text)}`;
 
 export default function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -72,6 +81,7 @@ export default function SiteHeader() {
   const [scrolled, setScrolled] = useState(false);
   const { favorites } = useFavorites();
   const { count, openCart } = useCart();
+  const { user, isAuthenticated, openAuthModal } = useAuth();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -97,7 +107,7 @@ export default function SiteHeader() {
               <span className="hidden md:block text-[15px] font-semibold tracking-[0.08em]">WISE SOLE</span>
             </a>
 
-            <nav className="hidden md:flex items-center gap-9">
+            <nav className="hidden md:flex items-center gap-8">
               {navLinks.map((l) => (
                 <a
                   key={l.label}
@@ -110,7 +120,7 @@ export default function SiteHeader() {
               ))}
             </nav>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 md:gap-4">
               <button onClick={() => setSearchOpen((s) => !s)} aria-label="Search" className="p-2 transition-opacity hover:opacity-60">
                 <SearchIcon className="w-[18px] h-[18px]" />
               </button>
@@ -128,6 +138,34 @@ export default function SiteHeader() {
                 )}
               </a>
 
+              {/* CLIENT ACCOUNT ICON */}
+              {isAuthenticated ? (
+                <a
+                  href="/my-orders"
+                  aria-label="My Account"
+                  className="relative p-2 transition-opacity hover:opacity-60 flex items-center gap-1.5"
+                  title={`Signed in as ${user?.name}`}
+                >
+                  <UserIcon className="w-[18px] h-[18px] text-black" />
+                  <span className="hidden lg:inline text-[11px] font-medium tracking-wide truncate max-w-[90px]">
+                    {user?.name?.split(" ")[0]}
+                  </span>
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => openAuthModal("login")}
+                  aria-label="Sign In"
+                  className="p-2 transition-opacity hover:opacity-60 flex items-center gap-1"
+                  title="Sign In / Register"
+                >
+                  <UserIcon className="w-[18px] h-[18px]" />
+                  <span className="hidden lg:inline text-[11px] font-medium tracking-wide">
+                    Sign In
+                  </span>
+                </button>
+              )}
+
               {/* SHOPPING BAG / CART BUTTON */}
               <button
                 type="button"
@@ -144,12 +182,10 @@ export default function SiteHeader() {
               </button>
 
               <a
-                href={waLink("Hi Wise Sole! I'd like to know more about your collection.")}
-                target="_blank"
-                rel="noreferrer"
-                className="hidden md:inline-flex items-center text-[11px] tracking-[0.12em] uppercase border border-black px-4 py-2 hover:bg-black hover:text-white transition-colors duration-200"
+                href="/my-orders"
+                className="hidden md:inline-flex items-center text-[11px] tracking-[0.12em] uppercase border border-black px-3.5 py-2 hover:bg-black hover:text-white transition-colors duration-200"
               >
-                Inquire Now
+                My Purchases
               </a>
             </div>
           </div>
@@ -179,6 +215,7 @@ export default function SiteHeader() {
         </div>
       </header>
 
+      {/* MOBILE DRAWER */}
       <div
         className={`fixed inset-0 z-[60] md:hidden transition-opacity duration-300 ${
           menuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
@@ -219,14 +256,27 @@ export default function SiteHeader() {
               <BagIcon className="w-4 h-4" />
               <span>Shopping Bag ({count})</span>
             </button>
-            <a
-              href={waLink("Hi Wise Sole! I'd like to know more about your collection.")}
-              target="_blank"
-              rel="noreferrer"
-              className="block text-center text-[11px] tracking-[0.12em] uppercase bg-black text-white py-3"
-            >
-              Inquire Now
-            </a>
+
+            {isAuthenticated ? (
+              <a
+                href="/my-orders"
+                onClick={() => setMenuOpen(false)}
+                className="block text-center text-[11px] tracking-[0.12em] uppercase bg-black text-white py-3"
+              >
+                View My Purchases ({user?.name?.split(" ")[0]})
+              </a>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false);
+                  openAuthModal("login");
+                }}
+                className="w-full text-center text-[11px] tracking-[0.12em] uppercase bg-black text-white py-3"
+              >
+                Sign In / Register
+              </button>
+            )}
           </div>
         </div>
       </div>

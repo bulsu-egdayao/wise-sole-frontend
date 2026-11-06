@@ -11,8 +11,11 @@ import FAQ from './pages/FAQ.tsx'
 import Legitimacy from "./pages/Legitimacy"
 import Checkout from "./pages/Checkout"
 import OrderTracking from "./pages/OrderTracking"
+import MyOrders from "./pages/MyOrders"
 import { CartProvider } from "./context/CartContext"
+import { AuthProvider } from "./context/AuthContext"
 import CartDrawer from "./components/CartDrawer"
+import AuthModal from "./components/AuthModal"
 
 const path = window.location.pathname
 
@@ -51,6 +54,10 @@ function Router() {
     return <OrderTracking />
   }
 
+  if (path.startsWith('/my-orders') || path.startsWith('/orders') || path.startsWith('/purchases')) {
+    return <MyOrders />
+  }
+
   if (path.startsWith('/shop')) {
     return <Shop />
   }
@@ -60,9 +67,12 @@ function Router() {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <CartProvider>
-      <Router />
-      <CartDrawer />
-    </CartProvider>
+    <AuthProvider>
+      <CartProvider>
+        <Router />
+        <CartDrawer />
+        <AuthModal />
+      </CartProvider>
+    </AuthProvider>
   </StrictMode>,
 )

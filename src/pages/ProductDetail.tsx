@@ -1,7 +1,9 @@
-﻿import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import type { Product } from "../types/product";
 import { getProductBySlug, getRelatedProducts } from "../services/productDetail";
 import { submitInquiry } from "../services/inquiries";
+import { getApprovedVouches } from "../services/legitimacy";
+import type { Vouch } from "../services/legitimacy";
 import ProductCard, { peso, isOnSale, discountPercent } from "../components/ProductCard";
 import QuickViewModal from "../components/QuickViewModal";
 import { useFavorites } from "../hooks/useFavorites";
@@ -21,15 +23,31 @@ interface ProductDetailProps {
   slug: string;
 }
 
+// Sizing Chart Data
+const SIZING_TABLE = [
+  { usMen: "7.0", usWomen: "8.5", eu: "40", cm: "25.0" },
+  { usMen: "7.5", usWomen: "9.0", eu: "40.5", cm: "25.5" },
+  { usMen: "8.0", usWomen: "9.5", eu: "41", cm: "26.0" },
+  { usMen: "8.5", usWomen: "10.0", eu: "42", cm: "26.5" },
+  { usMen: "9.0", usWomen: "10.5", eu: "42.5", cm: "27.0" },
+  { usMen: "9.5", usWomen: "11.0", eu: "43", cm: "27.5" },
+  { usMen: "10.0", usWomen: "11.5", eu: "44", cm: "28.0" },
+  { usMen: "10.5", usWomen: "12.0", eu: "44.5", cm: "28.5" },
+  { usMen: "11.0", usWomen: "12.5", eu: "45", cm: "29.0" },
+  { usMen: "12.0", usWomen: "13.5", eu: "46", cm: "30.0" },
+];
+
 export default function ProductDetail({ slug }: ProductDetailProps) {
   const [product, setProduct] = useState<Product | null>(null);
   const [related, setRelated] = useState<Product[]>([]);
+  const [vouches, setVouches] = useState<Vouch[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [addAddon, setAddAddon] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
   const { favorites, toggleFavorite } = useFavorites();
   const { addToCart } = useCart();
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
@@ -54,9 +72,15 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
         setMessage(
           `Hi Wise Sole! I'm interested in ${p.name}. Is this still available?`
         );
-        return getRelatedProducts(p.category.slug, p.id);
+        return Promise.all([
+          getRelatedProducts(p.category.slug, p.id),
+          getApprovedVouches().catch(() => []),
+        ]);
       })
-      .then(setRelated)
+      .then(([relData, vouchData]) => {
+        setRelated(relData);
+        setVouches(vouchData.slice(0, 3));
+      })
       .catch(() => setError("Product not found."))
       .finally(() => setLoading(false));
   }, [slug]);
@@ -69,202 +93,145 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setLightboxOpen(false);
       if (images.length > 1) {
-        if (e.key === "ArrowLeft") setActiveImageIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
-        if (e.key === "ArrowRight") setActiveImageIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
+        if (e.key === "ArrowLeft") {
+          setActiveImageIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
+        } else if (e.key === "ArrowRight") {
+          setActiveImageIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
+        }
       }
     };
-    document.addEventListener("keydown", handleKey);
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", handleKey);
-      document.body.style.overflow = "";
-    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
   }, [lightboxOpen, images.length]);
-
-  const goHome = () => {
-    window.location.href = "/";
-  };
-
-  const goToProduct = (p: Product) => {
-    window.location.href = `/product/${p.slug}`;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!product) return;
-    setSubmitError(null);
-
-    if (!name.trim() || !contact.trim() || !message.trim()) {
-      setSubmitError("Please fill in your name, contact info, and message.");
-      return;
-    }
-
-    if (product.sizes && product.sizes.length > 0 && !selectedSize) {
-      setSubmitError("Please select a size before sending your inquiry.");
-      return;
-    }
-
-    const parts = [message.trim()];
-    if (selectedSize) parts.push(`(Size: ${selectedSize})`);
-    if (addAddon && product.addon_name) parts.push(`+ Add-on: ${product.addon_name} (${peso(product.addon_price!)})`);
-    const finalMessage = parts.join(" ");
-
-    setSubmitting(true);
-    try {
-      await submitInquiry({
-        product_id: product.id,
-        name: name.trim(),
-        contact: contact.trim(),
-        message: finalMessage,
-      });
-      setSubmitted(true);
-    } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Failed to send inquiry");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const currentPrice = product && isOnSale(product) ? peso(product.sale_price!) : product ? peso(product.price) : "";
-  const needsSizeSelection = !!product && product.sizes && product.sizes.length > 0 && !selectedSize;
-
-  const basePriceNum = product ? parseFloat(isOnSale(product) ? product.sale_price! : product.price) : 0;
-  const addonPriceNum = product && product.addon_price ? parseFloat(product.addon_price) : 0;
-  const totalWithAddon = basePriceNum + addonPriceNum;
-
-  const waLink = product
-    ? `https://wa.me/639560929925?text=${encodeURIComponent(
-        `Hi Wise Sole! I'm interested in ${product.name}${
-          selectedSize ? `, size ${selectedSize},` : ""
-        } (${currentPrice})${
-          addAddon && product.addon_name ? ` plus the ${product.addon_name} add-on (${peso(product.addon_price!)}) — total ${peso(totalWithAddon)}` : ""
-        }. Is this still available?`
-      )}`
-    : "#";
 
   if (loading) {
     return (
-      <div
-        style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" }}
-        className="min-h-screen bg-white flex items-center justify-center"
-      >
-        <p className="text-[13px] text-[#6B6B6B]">Loading product…</p>
+      <div className="min-h-screen bg-white">
+        <SiteHeader />
+        <div className="max-w-[1440px] mx-auto px-5 md:px-10 py-20 text-center text-[#6B6B6B]">
+          Loading product...
+        </div>
       </div>
     );
   }
 
   if (error || !product) {
     return (
-      <div
-        style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" }}
-        className="min-h-screen bg-white flex flex-col items-center justify-center gap-4"
-      >
-        <p className="text-[15px] text-black">{error || "Product not found."}</p>
-        <button
-          onClick={goHome}
-          className="text-[11px] tracking-[0.12em] uppercase border-b border-black pb-0.5 hover:opacity-60 transition-opacity"
-        >
-          Back to Homepage
-        </button>
+      <div className="min-h-screen bg-white">
+        <SiteHeader />
+        <div className="max-w-[1440px] mx-auto px-5 md:px-10 py-20 text-center">
+          <p className="text-[18px] mb-4">{error || "Product not found."}</p>
+          <a
+            href="/shop"
+            className="text-[12px] tracking-[0.1em] uppercase underline hover:opacity-60"
+          >
+            ← Back to Shop
+          </a>
+        </div>
       </div>
     );
   }
 
-  const seed = `wsp${product.id}`;
-
   const mainImageSrc = hasRealImages
-    ? imageUrl(images[activeImageIndex]?.image_path, seed)
-    : imageUrl("", seed);
+    ? imageUrl(images[activeImageIndex].image_path, `prod${product.id}-main`)
+    : `https://picsum.photos/seed/prod${product.id}/900/1100`;
 
-  const SIZE_ORDER = ["XXS", "XS", "S", "M", "L", "XL", "XXL", "XXXL", "4XL", "5XL"];
+  const sortedSizes = [...(product.sizes || [])].sort((a, b) => {
+    const numA = parseFloat(a.size);
+    const numB = parseFloat(b.size);
+    if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+    return a.size.localeCompare(b.size);
+  });
 
-  function sizeOrderIndex(size: string): number {
-    return SIZE_ORDER.indexOf(size.trim().toUpperCase());
-  }
+  const needsSizeSelection = product.sizes && product.sizes.length > 0 && !selectedSize;
 
-  const sortedSizes = product.sizes
-    ? [...product.sizes].sort((a, b) => {
-        const numA = parseFloat(a.size);
-        const numB = parseFloat(b.size);
-        const bothNumeric = !isNaN(numA) && !isNaN(numB);
-        if (bothNumeric) return numA - numB;
+  const currentPrice = isOnSale(product)
+    ? peso(product.sale_price!)
+    : peso(product.price);
 
-        const orderA = sizeOrderIndex(a.size);
-        const orderB = sizeOrderIndex(b.size);
-        if (orderA !== -1 && orderB !== -1) return orderA - orderB;
-        if (orderA !== -1) return -1;
-        if (orderB !== -1) return 1;
+  const basePrice = isOnSale(product) ? Number(product.sale_price) : Number(product.price);
+  const addonCost = addAddon && product.addon_price ? Number(product.addon_price) : 0;
+  const totalWithAddon = basePrice + addonCost;
 
-        return a.size.localeCompare(b.size);
-      })
-    : [];
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setSubmitError(null);
+
+    const inquiryDetails = selectedSize
+      ? `${message}\n\n[Size selected: ${selectedSize}]`
+      : message;
+
+    try {
+      await submitInquiry({
+        name,
+        contact,
+        message: inquiryDetails,
+        product_id: product.id,
+      });
+      setSubmitted(true);
+    } catch {
+      setSubmitError("Failed to send inquiry. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const goToProduct = (p: Product) => {
+    window.location.href = `/product/${p.slug}`;
+  };
 
   return (
-    <div style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" }} className="bg-white text-black min-h-screen w-full pb-20 md:pb-0">
+    <div className="min-h-screen bg-white" style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" }}>
       <SiteHeader />
 
       <section className="max-w-[1440px] mx-auto px-5 md:px-10 py-10 md:py-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-16">
-          <div>
+        <a
+          href="/shop"
+          className="inline-block text-[11px] tracking-[0.1em] uppercase text-[#6B6B6B] hover:text-black transition-colors duration-200 mb-8"
+        >
+          ← Back to Shop
+        </a>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 md:gap-14 items-start">
+          {/* LEFT: IMAGES */}
+          <div className="lg:col-span-7">
             <div
+              className={`relative overflow-hidden bg-[#FAFAFA] aspect-square w-full mb-4 border border-[#EAEAEA] ${
+                hasRealImages ? "cursor-zoom-in" : ""
+              }`}
               onClick={() => hasRealImages && setLightboxOpen(true)}
-              className={`relative bg-[#F5F5F5] mb-3 group overflow-hidden ${hasRealImages ? "cursor-zoom-in" : ""}`}
             >
               <img
                 src={mainImageSrc}
                 alt={product.name}
-                className="block w-full h-auto transition-transform duration-300 group-hover:scale-105"
+                className="w-full h-full object-cover select-none"
               />
-              {hasRealImages && (
-                <div className="absolute bottom-3 right-3 bg-black/75 text-white text-[10px] tracking-[0.1em] uppercase px-2.5 py-1.5 flex items-center gap-1.5 opacity-90 transition-opacity">
-                  <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="11" cy="11" r="7" />
-                    <line x1="21" y1="21" x2="16.2" y2="16.2" />
-                    <line x1="11" y1="8" x2="11" y2="14" />
-                    <line x1="8" y1="11" x2="14" y2="11" />
-                  </svg>
-                  <span>Zoom</span>
-                </div>
-              )}
-              {product.is_new && (
-                <span className="absolute top-4 left-4 bg-black text-white text-[10px] tracking-[0.15em] uppercase px-2.5 py-1">
-                  New
-                </span>
-              )}
-              {!product.is_available && (
-                <span className="absolute top-4 left-4 bg-white text-black text-[10px] tracking-[0.15em] uppercase px-2.5 py-1 border border-[#EAEAEA]">
-                  Sold Out
-                </span>
-              )}
-              {isOnSale(product) && (
-                <span
-                  className={`absolute left-4 bg-red-600 text-white text-[10px] tracking-[0.15em] uppercase px-2.5 py-1 ${
-                    product.is_new || !product.is_available ? "top-12" : "top-4"
-                  }`}
-                >
-                  -{discountPercent(product)}% Off
-                </span>
-              )}
             </div>
 
-            {hasRealImages && images.length > 1 && (
-              <div className="grid grid-cols-5 gap-2.5">
+            {images.length > 1 && (
+              <div className="grid grid-cols-5 gap-3">
                 {images.map((img, i) => (
                   <button
                     key={img.id}
                     onClick={() => setActiveImageIndex(i)}
-                    className={`relative aspect-square overflow-hidden bg-[#F5F5F5] transition-opacity duration-200 ${
-                      i === activeImageIndex ? "opacity-100 ring-1 ring-black" : "opacity-60 hover:opacity-90"
+                    className={`aspect-square overflow-hidden bg-[#FAFAFA] border transition-colors duration-200 ${
+                      i === activeImageIndex ? "border-black" : "border-[#EAEAEA] opacity-60 hover:opacity-100"
                     }`}
                   >
-                    <img src={imageUrl(img.image_path, seed)} alt="" loading="lazy" className="w-full h-full object-cover" />
+                    <img
+                      src={imageUrl(img.image_path, `thumb${img.id}`)}
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
                   </button>
                 ))}
               </div>
             )}
           </div>
 
-          <div>
+          {/* RIGHT: PRODUCT INFO */}
+          <div className="lg:col-span-5">
             <p className="text-[10px] tracking-[0.15em] uppercase text-[#6B6B6B] mb-2">
               {product.category.name}
             </p>
@@ -283,16 +250,30 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
             )}
 
             {product.description && (
-              <p className="text-[14px] text-[#6B6B6B] leading-relaxed mb-6 max-w-[440px]">
+              <p className="text-[14px] text-[#6B6B6B] leading-relaxed mb-6">
                 {product.description}
               </p>
             )}
 
+            {/* SIZES + SIZE GUIDE BUTTON (RECO #1) */}
             {product.sizes && product.sizes.length > 0 && (
               <div className="mb-6">
-                <p className="text-[11px] tracking-[0.08em] uppercase text-[#6B6B6B] mb-2.5">
-                  Select Size
-                </p>
+                <div className="flex items-center justify-between mb-2.5">
+                  <p className="text-[11px] tracking-[0.08em] uppercase text-[#6B6B6B]">
+                    Select Size
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setSizeGuideOpen(true)}
+                    className="text-[11px] uppercase tracking-wider text-black underline hover:opacity-60 flex items-center gap-1"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <path d="M4 6h16M4 12h16m-7 6h7" />
+                    </svg>
+                    <span>Size Guide &amp; Fit</span>
+                  </button>
+                </div>
+
                 <div className="flex flex-wrap gap-2">
                   {sortedSizes.map((s) => {
                     const stockNum = Number(s.stock);
@@ -305,7 +286,7 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
                         disabled={outOfStock}
                         className={`text-[12px] px-4 py-2.5 border transition-colors duration-200 ${
                           active
-                            ? "bg-black text-white border-black"
+                            ? "bg-black text-white border-black font-semibold"
                             : outOfStock
                             ? "border-[#EAEAEA] text-[#EAEAEA] cursor-not-allowed line-through"
                             : "border-[#EAEAEA] text-black hover:border-black"
@@ -317,15 +298,16 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
                   })}
                 </div>
                 {selectedSize && (
-                  <p className="text-[11px] text-[#6B6B6B] mt-2">
-                    {product.sizes.find((s) => s.size === selectedSize)?.stock} in stock — size {selectedSize}
+                  <p className="text-[11px] text-green-700 font-medium mt-2">
+                    ✓ Selected: Size {selectedSize} • Ready to add to bag
                   </p>
                 )}
               </div>
             )}
 
+            {/* ADD-ON CHECKBOX */}
             {product.addon_name && product.addon_price && (
-              <div className="mb-6 border border-[#EAEAEA] p-4">
+              <div className="mb-6 border border-[#EAEAEA] p-4 bg-[#FAFAFA]">
                 <label className="flex items-start gap-3 cursor-pointer">
                   <input
                     type="checkbox"
@@ -334,8 +316,8 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
                     className="w-4 h-4 mt-0.5 accent-black shrink-0"
                   />
                   <span className="text-[13px]">
-                    Add <span className="font-medium">{product.addon_name}</span> for{" "}
-                    <span className="font-medium">{peso(product.addon_price)}</span>
+                    Add <span className="font-semibold">{product.addon_name}</span> for{" "}
+                    <span className="font-semibold">{peso(product.addon_price)}</span>
                   </span>
                 </label>
                 {addAddon && (
@@ -346,21 +328,29 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
               </div>
             )}
 
-            <div className="flex items-center gap-2 mb-8">
-              <span
-                className={`inline-block w-2 h-2 rounded-full ${
-                  product.is_available ? "bg-black" : "bg-[#EAEAEA]"
-                }`}
-              />
-              <span className="text-[12px] text-[#6B6B6B]">
-                {product.sizes && product.sizes.length > 0
-                  ? product.is_available
-                    ? "In stock — select a size above"
-                    : "Currently out of stock"
-                  : product.is_available
-                  ? `In stock — ${product.stock} available`
-                  : "Currently out of stock"}
-              </span>
+            {/* CONDITION & INCLUSIONS CHECKLIST (RECO #2) */}
+            <div className="mb-6 p-4 border border-[#EAEAEA] bg-[#FAFAFA] space-y-2 text-[12px]">
+              <p className="text-[10px] tracking-[0.15em] uppercase text-[#888] font-semibold mb-1">
+                Item Condition &amp; Packaging
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-black">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-green-600 font-bold">✓</span>
+                  <span>Condition: Brand New / Deadstock</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-green-600 font-bold">✓</span>
+                  <span>Original Box &amp; Packaging</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-green-600 font-bold">✓</span>
+                  <span>Extra Laces &amp; Accessories Included</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-green-600 font-bold">✓</span>
+                  <span>Accredited Courier Dispatch</span>
+                </div>
+              </div>
             </div>
 
             {/* ADD TO SHOPPING BAG BUTTON */}
@@ -374,7 +364,7 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
                 }
                 addToCart(product, selectedSize || null, 1);
               }}
-              className={`w-full text-center text-[12px] tracking-[0.14em] uppercase py-4 mb-2.5 transition-colors duration-200 font-semibold shadow-xs flex items-center justify-center gap-2 ${
+              className={`w-full text-center text-[12px] tracking-[0.14em] uppercase py-4 mb-3 transition-colors duration-200 font-semibold shadow-xs flex items-center justify-center gap-2 ${
                 !product.is_available
                   ? "bg-[#EAEAEA] text-[#999] cursor-not-allowed"
                   : "bg-black text-white hover:bg-[#222]"
@@ -388,25 +378,19 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
               <span>{!product.is_available ? "Sold Out" : "Add to Shopping Bag"}</span>
             </button>
 
-            <div className="flex items-center justify-between text-[11px] text-[#6B6B6B] py-2 mb-3 px-1 border-b border-[#F0F0F0]">
+            {/* SUBTLE INQUIRY LINK */}
+            <div className="flex items-center justify-between text-[11px] text-[#6B6B6B] py-2 mb-4 px-1 border-b border-[#F0F0F0]">
               <span>Have sizing or pre-order questions?</span>
               <a
-                href={needsSizeSelection ? undefined : waLink}
+                href={`https://wa.me/639692891708?text=${encodeURIComponent(`Hi Wise Sole! Question regarding ${product.name}`)}`}
                 target="_blank"
                 rel="noreferrer"
-                onClick={(e) => {
-                  if (needsSizeSelection) {
-                    e.preventDefault();
-                    alert("Please select a size first.");
-                  }
-                }}
                 className="text-black font-semibold uppercase tracking-wider hover:underline"
               >
                 Chat on WhatsApp →
               </a>
             </div>
 
-            {/* ALTERNATIVE INQUIRY & SHARE OPTIONS */}
             <div className="grid grid-cols-2 gap-2.5 mb-3">
               <a
                 href="https://m.me/61578547474371"
@@ -448,69 +432,61 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
 
             <button
               onClick={() => toggleFavorite(product.id)}
-              className="w-full border border-[#EAEAEA] text-[11px] tracking-[0.12em] uppercase py-4 mb-10 hover:border-black transition-colors duration-200"
+              className="w-full border border-[#EAEAEA] text-[11px] tracking-[0.12em] uppercase py-3.5 mb-8 hover:border-black transition-colors duration-200"
             >
               {favorites.includes(product.id) ? "♥ Saved to Favorites" : "♡ Add to Favorites"}
             </button>
 
-            <div className="border-t border-[#EAEAEA] pt-8">
-              <p className="text-[10px] tracking-[0.15em] uppercase text-[#6B6B6B] mb-1">Or send a message</p>
-              <h2 className="text-[16px] font-semibold mb-5">Ask about this product</h2>
+            {/* SEND A DIRECT MESSAGE FORM */}
+            <div className="border-t border-[#EAEAEA] pt-6">
+              <p className="text-[10px] tracking-[0.15em] uppercase text-[#6B6B6B] mb-1">Direct Message</p>
+              <h2 className="text-[15px] font-semibold mb-4">Inquire About This Piece</h2>
 
               {submitted ? (
-                <div className="border border-[#EAEAEA] p-5">
-                  <p className="text-[13.5px]">
-                    Thanks, {name.split(" ")[0]}! Your inquiry has been sent — Wise Sole will get back to you soon.
-                  </p>
+                <div className="border border-green-200 bg-green-50 p-4 text-[13px] text-green-900">
+                  Thanks, {name.split(" ")[0]}! Your inquiry has been sent — Wise Sole will get back to you shortly.
                 </div>
               ) : (
-                <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                <form onSubmit={handleSubmit} className="flex flex-col gap-3">
                   <div>
-                    <label className="block text-[11px] tracking-[0.08em] uppercase text-[#6B6B6B] mb-1.5">
-                      Your Name
-                    </label>
                     <input
                       type="text"
+                      placeholder="Your Name"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       required
-                      className="w-full bg-[#F5F5F5] border border-[#EAEAEA] px-4 py-3 text-[14px] outline-none focus:border-black transition-colors duration-200"
+                      className="w-full bg-[#F5F5F5] border border-[#EAEAEA] px-3.5 py-2.5 text-[13px] outline-none focus:border-black"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] tracking-[0.08em] uppercase text-[#6B6B6B] mb-1.5">
-                      Contact (WhatsApp / Email)
-                    </label>
                     <input
                       type="text"
+                      placeholder="Contact (Mobile / Email)"
                       value={contact}
                       onChange={(e) => setContact(e.target.value)}
                       required
-                      placeholder="0912 345 6789"
-                      className="w-full bg-[#F5F5F5] border border-[#EAEAEA] px-4 py-3 text-[14px] outline-none focus:border-black transition-colors duration-200"
+                      className="w-full bg-[#F5F5F5] border border-[#EAEAEA] px-3.5 py-2.5 text-[13px] outline-none focus:border-black"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] tracking-[0.08em] uppercase text-[#6B6B6B] mb-1.5">
-                      Message
-                    </label>
                     <textarea
+                      placeholder="Questions regarding sizing, availability, or pickup..."
                       value={message}
                       onChange={(e) => setMessage(e.target.value)}
-                      rows={4}
+                      rows={3}
                       required
-                      className="w-full bg-[#F5F5F5] border border-[#EAEAEA] px-4 py-3 text-[14px] outline-none focus:border-black transition-colors duration-200 resize-none"
+                      className="w-full bg-[#F5F5F5] border border-[#EAEAEA] px-3.5 py-2.5 text-[13px] outline-none focus:border-black resize-none"
                     />
                   </div>
 
-                  {submitError && <p className="text-[13px] text-red-600">{submitError}</p>}
+                  {submitError && <p className="text-[12px] text-red-600">{submitError}</p>}
 
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="border border-black text-[11px] tracking-[0.12em] uppercase py-3.5 hover:bg-black hover:text-white transition-colors duration-200 disabled:opacity-50"
+                    className="border border-black text-[11px] tracking-[0.12em] uppercase py-3 hover:bg-black hover:text-white transition-colors duration-200 disabled:opacity-50"
                   >
-                    {submitting ? "Sending…" : "Send Inquiry"}
+                    {submitting ? "Sending..." : "Submit Inquiry"}
                   </button>
                 </form>
               )}
@@ -519,15 +495,54 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
         </div>
       </section>
 
+      {/* VERIFIED BUYER FEEDBACK / VOUCHES SHOWCASE (RECO #5) */}
+      {vouches.length > 0 && (
+        <section className="border-t border-[#EAEAEA] bg-[#FAFAFA]">
+          <div className="max-w-[1440px] mx-auto px-5 md:px-10 py-12 md:py-16">
+            <div className="flex items-end justify-between mb-8">
+              <div>
+                <p className="text-[10px] tracking-[0.15em] uppercase text-[#6B6B6B] mb-1">Authentic Community</p>
+                <h2 className="text-[20px] md:text-[24px] font-semibold tracking-tight">Verified Buyer Vouches</h2>
+              </div>
+              <a
+                href="/legitimacy"
+                className="text-[11px] tracking-[0.1em] uppercase text-black underline hover:opacity-60"
+              >
+                View All Vouches →
+              </a>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {vouches.map((v) => (
+                <div key={v.id} className="bg-white p-6 border border-[#EAEAEA] shadow-xs">
+                  <div className="flex items-center gap-1 text-amber-500 mb-2">
+                    {Array.from({ length: v.rating || 5 }).map((_, idx) => (
+                      <span key={idx}>★</span>
+                    ))}
+                  </div>
+                  <p className="text-[13px] text-black italic mb-4 leading-relaxed">
+                    "{v.message}"
+                  </p>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-[#888]">
+                    — {v.name} (Verified Purchase)
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* COMPLETE THE LOOK / YOU MIGHT ALSO LIKE (RECO #4) */}
       {related.length > 0 && (
         <section className="border-t border-[#EAEAEA]">
-          <div className="max-w-[1440px] mx-auto px-5 md:px-10 py-16 md:py-24">
-            <p className="text-[10px] tracking-[0.15em] uppercase text-[#6B6B6B] mb-2">You Might Also Like</p>
+          <div className="max-w-[1440px] mx-auto px-5 md:px-10 py-16 md:py-20">
+            <p className="text-[10px] tracking-[0.15em] uppercase text-[#6B6B6B] mb-2">Complete The Look</p>
             <h2 className="text-[22px] md:text-[26px] font-semibold tracking-tight mb-8">
               More from {product.category.name}
             </h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-10 md:gap-x-8">
-              {related.map((p) => (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-10 md:gap-x-6">
+              {related.slice(0, 4).map((p) => (
                 <ProductCard
                   key={p.id}
                   product={p}
@@ -544,13 +559,69 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
 
       <QuickViewModal product={quickViewProduct} onClose={() => setQuickViewProduct(null)} />
 
+      {/* SIZE GUIDE MODAL (RECO #1) */}
+      {sizeGuideOpen && (
+        <div
+          className="fixed inset-0 z-[200] bg-black/60 flex items-center justify-center p-4 backdrop-blur-xs"
+          onClick={() => setSizeGuideOpen(false)}
+        >
+          <div
+            className="bg-white max-w-lg w-full p-6 md:p-8 border border-[#EAEAEA] shadow-2xl relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setSizeGuideOpen(false)}
+              className="absolute top-5 right-5 text-[#888] hover:text-black text-xl leading-none"
+            >
+              &times;
+            </button>
+
+            <p className="text-[10px] tracking-[0.2em] uppercase text-[#6B6B6B] mb-1">Wise Sole Sizing</p>
+            <h3 className="text-[20px] font-semibold tracking-tight mb-2">Sneaker Size Conversion Guide</h3>
+            <p className="text-[12px] text-[#6B6B6B] mb-5">
+              Sizes are generally listed in standard US Men's sizing. If in between sizes or wide-footed, we recommend going half a size up.
+            </p>
+
+            <div className="overflow-x-auto border border-[#EAEAEA]">
+              <table className="w-full text-left text-[12px]">
+                <thead>
+                  <tr className="bg-[#FAFAFA] border-b border-[#EAEAEA] text-[10px] tracking-wider uppercase text-[#888]">
+                    <th className="py-2.5 px-3 font-semibold">US Men</th>
+                    <th className="py-2.5 px-3 font-semibold">US Women</th>
+                    <th className="py-2.5 px-3 font-semibold">EU Size</th>
+                    <th className="py-2.5 px-3 font-semibold">CM Length</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#F0F0F0]">
+                  {SIZING_TABLE.map((row) => (
+                    <tr key={row.usMen} className="hover:bg-[#F9F9F9]">
+                      <td className="py-2 px-3 font-mono font-medium">{row.usMen}</td>
+                      <td className="py-2 px-3 font-mono">{row.usWomen}</td>
+                      <td className="py-2 px-3 font-mono font-semibold">{row.eu}</td>
+                      <td className="py-2 px-3 font-mono text-[#6B6B6B]">{row.cm}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setSizeGuideOpen(false)}
+              className="w-full mt-6 py-3 bg-black text-white text-[11px] uppercase tracking-wider hover:bg-[#222]"
+            >
+              Close Size Guide
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* LIGHTBOX MODAL */}
       {lightboxOpen && hasRealImages && (
         <div
           className="fixed inset-0 z-[300] bg-black/95 flex flex-col justify-between p-4 md:p-8"
           onClick={() => setLightboxOpen(false)}
         >
-          {/* Header */}
           <div className="w-full flex items-center justify-between text-white" onClick={(e) => e.stopPropagation()}>
             <div>
               <p className="text-[14px] font-semibold">{product.name}</p>
@@ -565,11 +636,10 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
               className="text-white hover:text-white/70 text-[32px] leading-none p-2"
               aria-label="Close lightbox"
             >
-              ×
+              &times;
             </button>
           </div>
 
-          {/* Main Image */}
           <div className="relative flex-1 w-full flex items-center justify-center my-3" onClick={(e) => e.stopPropagation()}>
             <img
               src={mainImageSrc}
@@ -596,62 +666,8 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
               </>
             )}
           </div>
-
-          {/* Thumbnails */}
-          {images.length > 1 && (
-            <div className="flex items-center justify-center gap-2 overflow-x-auto max-w-full pb-2" onClick={(e) => e.stopPropagation()}>
-              {images.map((img, idx) => (
-                <button
-                  key={img.id || idx}
-                  onClick={() => setActiveImageIndex(idx)}
-                  className={`w-12 h-12 md:w-16 md:h-16 shrink-0 border transition-all ${
-                    idx === activeImageIndex ? "border-white ring-2 ring-white opacity-100" : "border-white/30 opacity-50 hover:opacity-100"
-                  }`}
-                >
-                  <img src={imageUrl(img.image_path, seed)} alt="" className="w-full h-full object-cover" />
-                </button>
-              ))}
-            </div>
-          )}
         </div>
       )}
-
-      {/* STICKY MOBILE INQUIRE BAR */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-[#EAEAEA] p-3 md:hidden flex items-center justify-between gap-3 shadow-[0_-2px_10px_rgba(0,0,0,0.06)]">
-        <div>
-          <p className="text-[10px] tracking-[0.1em] uppercase text-[#6B6B6B]">Price</p>
-          <div className="flex items-center gap-1.5">
-            <p className={`text-[15px] font-semibold ${isOnSale(product) ? "text-red-600" : "text-black"}`}>
-              {currentPrice}
-            </p>
-            {isOnSale(product) && (
-              <span className="text-[10px] text-[#6B6B6B] line-through">
-                {peso(product.price)}
-              </span>
-            )}
-          </div>
-        </div>
-
-        <button
-          type="button"
-          disabled={!product.is_available}
-          onClick={() => {
-            if (needsSizeSelection) {
-              alert("Please select a size first.");
-              window.scrollTo({ top: 350, behavior: "smooth" });
-              return;
-            }
-            addToCart(product, selectedSize || null, 1);
-          }}
-          className={`flex-1 max-w-[210px] text-center text-[11px] tracking-[0.12em] uppercase py-3 font-semibold transition-colors duration-200 flex items-center justify-center gap-1.5 ${
-            !product.is_available
-              ? "bg-[#EAEAEA] text-[#999]"
-              : "bg-black text-white hover:bg-[#222]"
-          }`}
-        >
-          <span>{!product.is_available ? "Sold Out" : "Add to Bag"}</span>
-        </button>
-      </div>
     </div>
   );
 }
