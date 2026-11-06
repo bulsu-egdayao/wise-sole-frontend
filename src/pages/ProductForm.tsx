@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import type { Product, Category, ProductImage } from "../types/product";
 import { createProduct, updateProduct } from "../services/adminProducts";
 import type { ProductFormData, SizeFormRow } from "../services/adminProducts";
@@ -54,6 +54,7 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
   const [loadingTypes, setLoadingTypes] = useState(false);
 
   const [showAddon, setShowAddon] = useState(false);
+  const [customSizeInput, setCustomSizeInput] = useState("");
 
   const isEditing = product !== null;
 
@@ -133,7 +134,7 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
       if (exists) {
         return { ...prev, sizes: prev.sizes.filter((s) => s.size.trim().toUpperCase() !== size.toUpperCase()) };
       }
-      return { ...prev, sizes: [...prev.sizes, { size, stock: "0" }] };
+      return { ...prev, sizes: [...prev.sizes, { size, stock: getRandomStock() }] };
     });
   };
 
@@ -528,42 +529,158 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
             )}
 
             <div>
-              <label className="block text-[11px] tracking-[0.08em] uppercase text-[#6B6B6B] mb-1.5">
-                Sizes &amp; Stock — optional
-              </label>
-              <p className="text-[11px] text-[#6B6B6B] mb-3">
-                Add sizes for apparel/footwear (e.g. S, M, L or 40, 41, 42). Skip this entirely for products
-                like bags, watches, or perfumes.
-              </p>
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                <div>
+                  <label className="block text-[11px] tracking-[0.08em] uppercase text-[#6B6B6B] font-semibold">
+                    Sizes &amp; Stock
+                  </label>
+                  <p className="text-[11px] text-[#888]">
+                    {form.sizes.length > 0
+                      ? `${form.sizes.length} sizes active (Total stock: ${form.stock || 0})`
+                      : "Tap a size chip or use auto-fill below"}
+                  </p>
+                </div>
 
+                {/* Quick Auto-Fill Buttons */}
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => prefillShoeSizes(false)}
+                    className="text-[10px] tracking-wider uppercase bg-black text-white px-2.5 py-1.5 hover:bg-[#222] transition-colors font-medium flex items-center gap-1"
+                    title="Pre-fills 35 to 47 with random 5-8 stocks"
+                  >
+                    <span>⚡ Auto-Fill 35–47 (Stock 5-8)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => prefillShoeSizes(true)}
+                    className="text-[10px] tracking-wider uppercase border border-[#DDD] bg-white text-black px-2.5 py-1.5 hover:border-black transition-colors"
+                    title="Pre-fills whole sizes 35, 36, 37... 47"
+                  >
+                    Full Sizes 35–47
+                  </button>
+                  {form.sizes.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={clearAllSizes}
+                      className="text-[10px] tracking-wider uppercase text-red-600 hover:underline px-2 py-1"
+                    >
+                      Clear All
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* COMPACT GRID OF ACTIVE SIZES (NO MORE ENDLESS VERTICAL ROWS!) */}
               {form.sizes.length > 0 && (
-                <div className="flex flex-col gap-2 mb-3">
-                  {form.sizes.map((row, i) => (
-                    <div key={i} className="flex gap-2 items-center">
-                      <input
-                        type="text"
-                        value={row.size}
-                        onChange={(e) => updateSizeRow(i, "size", e.target.value)}
-                        placeholder="Size (e.g. M, 42)"
-                        className="flex-1 bg-[#F5F5F5] border border-[#EAEAEA] px-3 py-2.5 text-[13px] outline-none focus:border-black transition-colors duration-200"
-                      />
-                      <input
-                        type="number"
-                        min="0"
-                        value={row.stock}
-                        onChange={(e) => updateSizeRow(i, "stock", e.target.value)}
-                        placeholder="Stock"
-                        className="w-28 bg-[#F5F5F5] border border-[#EAEAEA] px-3 py-2.5 text-[13px] outline-none focus:border-black transition-colors duration-200"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeSizeRow(i)}
-                        className="w-9 h-9 flex items-center justify-center border border-[#EAEAEA] hover:border-red-500 hover:text-red-500 transition-colors duration-200 text-[16px]"
-                        aria-label="Remove size"
+                <div className="border border-[#EAEAEA] bg-[#FAFAFA] p-3 mb-4 max-h-[300px] overflow-y-auto">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2">
+                    {form.sizes.map((row, i) => (
+                      <div
+                        key={i}
+                        className="bg-white border border-[#DDD] p-2 flex flex-col justify-between shadow-2xs hover:border-black transition-all"
                       >
-                        ×
-                      </button>
-                    </div>
+                        <div className="flex items-center justify-between mb-1.5 border-b border-[#F0F0F0] pb-1">
+                          <span className="text-[13px] font-bold font-mono text-black">{row.size}</span>
+                          <button
+                            type="button"
+                            onClick={() => removeSizeRow(i)}
+                            className="text-[#999] hover:text-red-600 text-[14px] leading-none px-1"
+                            title="Unselect size"
+                          >
+                            &times;
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => adjustStock(i, -1)}
+                            className="w-5 h-5 bg-[#F5F5F5] hover:bg-black hover:text-white text-[11px] font-bold flex items-center justify-center border border-[#EAEAEA] transition-colors"
+                          >
+                            -
+                          </button>
+                          <input
+                            type="number"
+                            min="0"
+                            value={row.stock}
+                            onChange={(e) => updateSizeRow(i, "stock", e.target.value)}
+                            className="w-full text-center bg-[#F9F9F9] border border-[#EAEAEA] py-0.5 text-[12px] font-mono font-medium outline-none focus:border-black"
+                            title="Stock quantity"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => adjustStock(i, 1)}
+                            className="w-5 h-5 bg-[#F5F5F5] hover:bg-black hover:text-white text-[11px] font-bold flex items-center justify-center border border-[#EAEAEA] transition-colors"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* QUICK TOGGLE CHIPS - CLICK TO ADD/REMOVE */}
+              {(showShoePreset || showApparelPreset) && (
+                <div className="mb-4 p-3 bg-white border border-[#EAEAEA]">
+                  <p className="text-[10px] tracking-[0.08em] uppercase text-[#888] mb-2 font-medium">
+                    Tap chip to toggle available / unavailable:
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(showShoePreset ? SHOE_SIZES : APPAREL_SIZES).map((size) => {
+                      const active = isSizeSelected(size);
+                      return (
+                        <button
+                          key={size}
+                          type="button"
+                          onClick={() => toggleSize(size)}
+                          className={`text-[11px] font-mono px-2.5 py-1.5 border transition-all ${
+                            active
+                              ? "bg-black text-white border-black font-semibold shadow-2xs"
+                              : "border-[#EAEAEA] bg-[#FAFAFA] text-[#888] hover:border-black hover:text-black"
+                          }`}
+                        >
+                          {active ? `✓ ${size}` : size}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* CUSTOM SIZE INPUT */}
+              <div className="flex gap-2 items-center">
+                <input
+                  type="text"
+                  value={customSizeInput}
+                  onChange={(e) => setCustomSizeInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (customSizeInput.trim()) {
+                        toggleSize(customSizeInput.trim());
+                        setCustomSizeInput("");
+                      }
+                    }
+                  }}
+                  placeholder="Custom size (e.g. 48, One Size)"
+                  className="bg-[#F5F5F5] border border-[#EAEAEA] px-3 py-2 text-[12px] outline-none focus:border-black w-52"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (customSizeInput.trim()) {
+                      toggleSize(customSizeInput.trim());
+                      setCustomSizeInput("");
+                    }
+                  }}
+                  className="text-[11px] tracking-wider uppercase border border-black px-3.5 py-2 hover:bg-black hover:text-white transition-colors"
+                >
+                  + Add Custom Size
+                </button>
+              </div>
+            </div>
                   ))}
                 </div>
               )}

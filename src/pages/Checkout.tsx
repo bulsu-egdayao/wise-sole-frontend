@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+﻿import React, { useState, useEffect, useCallback } from "react";
 import { useCart } from "../context/CartContext";
 import SiteHeader from "../components/SiteHeader";
 import { validateVoucher, createOrder, getPaymentSettings } from "../services/orderApi";
@@ -70,6 +70,59 @@ const COURIERS: CourierInfo[] = [
 
 // Provinces where Lalamove is available
 const LALAMOVE_PROVINCES = ["Metro Manila (NCR)", "Bulacan"];
+
+async function compressReceiptImage(file: File): Promise<File> {
+  return new Promise((resolve) => {
+    if (file.size <= 400 * 1024) {
+      return resolve(file);
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const maxDimension = 1400;
+        let { width, height } = img;
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          canvas.toBlob(
+            (blob) => {
+              if (blob) {
+                const compressed = new File([blob], file.name.replace(/\.[^.]+$/, ".jpg"), {
+                  type: "image/jpeg",
+                  lastModified: Date.now(),
+                });
+                resolve(compressed);
+              } else {
+                resolve(file);
+              }
+            },
+            "image/jpeg",
+            0.82
+          );
+        } else {
+          resolve(file);
+        }
+      };
+      img.onerror = () => resolve(file);
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => resolve(file);
+    reader.readAsDataURL(file);
+  });
+}
 
 export default function Checkout() {
   const { items, subtotal, clearCart } = useCart();
@@ -248,11 +301,16 @@ export default function Checkout() {
     setVoucherError(null);
   };
 
-  const handleReceiptChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleReceiptChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setReceiptFile(file);
       setReceiptPreview(URL.createObjectURL(file));
+      try {
+        const compressed = await compressReceiptImage(file);
+        setReceiptFile(compressed);
+      } catch {
+        setReceiptFile(file);
+      }
     }
   };
 
@@ -554,61 +612,79 @@ export default function Checkout() {
                   />
                 </div>
 
-                {/* ─── Courier Preference with official logos ─── */}
+                {/* ─── Courier Preference (H&M Minimalist UI/UX) ─── */}
                 <div className="md:col-span-2">
                   <div className="flex items-center justify-between mb-2">
-                    <label className="block text-[11px] tracking-[0.08em] uppercase text-[#6B6B6B]">
-                      Courier Preference
+                    <label className="block text-[11px] tracking-[0.1em] uppercase text-[#6B6B6B] font-medium">
+                      Delivery Option
                     </label>
-                    <span className="text-[11px] text-[#2e7d32] font-medium flex items-center gap-1">
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                      Est. {selectedCourierInfo.eta}
+                    <span className="text-[11px] text-[#767676]">
+                      Standard: 2–4 Business Days
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="border border-[#EAEAEA] divide-y divide-[#EAEAEA] bg-white">
                     {COURIERS.map((c) => {
                       const isDisabled = c.name === "Lalamove" && !isLalamoveAvailable;
                       const isSelected = courierName === c.name;
                       return (
-                        <button
+                        <div
                           key={c.name}
-                          type="button"
-                          disabled={isDisabled}
-                          onClick={() => setCourierName(c.name)}
-                          className={`relative p-3 border text-center transition-all flex flex-col items-center justify-center gap-2 rounded-none ${
+                          onClick={() => !isDisabled && setCourierName(c.name)}
+                          className={`flex items-center justify-between p-3.5 sm:p-4 transition-all ${
                             isDisabled
-                              ? "border-[#EAEAEA] bg-[#F5F5F5] opacity-50 cursor-not-allowed"
+                              ? "opacity-40 bg-[#FAFAFA] cursor-not-allowed"
                               : isSelected
-                              ? "border-black bg-black text-white shadow-md ring-1 ring-black"
-                              : "border-[#EAEAEA] bg-white text-black hover:border-black/50"
+                              ? "bg-[#FAFAFA] cursor-pointer"
+                              : "hover:bg-[#FDFDFD] cursor-pointer"
                           }`}
-                          title={isDisabled ? "Lalamove is only available for Metro Manila (NCR) & Bulacan" : c.name}
                         >
-                          <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center bg-white p-1 border border-[#EAEAEA]">
-                            <img src={c.logo} alt={c.name} className="w-full h-full object-contain" />
+                          <div className="flex items-center gap-3.5 min-w-0">
+                            {/* H&M Minimalist Radio */}
+                            <div
+                              className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition-colors ${
+                                isSelected ? "border-black" : "border-[#BBB]"
+                              }`}
+                            >
+                              {isSelected && <div className="w-2 h-2 rounded-full bg-black" />}
+                            </div>
+
+                            {/* Small clean courier logo badge */}
+                            <div className="w-8 h-8 rounded-full border border-[#EAEAEA] bg-white p-0.5 shrink-0 flex items-center justify-center overflow-hidden">
+                              <img src={c.logo} alt={c.name} className="w-full h-full object-contain" />
+                            </div>
+
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <p className="text-[13px] font-medium text-black tracking-tight">{c.name}</p>
+                                {isSelected && (
+                                  <span className="text-[9px] uppercase tracking-wider bg-black text-white px-1.5 py-0.5 font-semibold">
+                                    Selected
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-[#767676] mt-0.5">
+                                {isDisabled
+                                  ? "Available for Bulacan & Metro Manila only"
+                                  : c.eta}
+                              </p>
+                            </div>
                           </div>
-                          <span className={`text-[11px] font-semibold tracking-wide ${isSelected ? "text-white" : "text-black"}`}>
-                            {c.shortLabel}
-                          </span>
-                          <span className={`text-[9px] uppercase tracking-wider ${isSelected ? "text-white/80" : "text-[#888]"}`}>
-                            {c.eta}
-                          </span>
-                        </button>
+
+                          <div className="text-right shrink-0 ml-3">
+                            <span className="text-[12px] font-semibold text-black tracking-wider uppercase">
+                              Free
+                            </span>
+                          </div>
+                        </div>
                       );
                     })}
                   </div>
 
                   {courierName === "Lalamove" && (
-                    <p className="text-[11px] text-amber-700 mt-2.5 flex items-center gap-1 bg-amber-50 p-2.5 border border-amber-200">
-                      <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                        <circle cx="12" cy="12" r="10" />
-                        <line x1="12" y1="8" x2="12" y2="12" />
-                        <line x1="12" y1="16" x2="12.01" y2="16" />
-                      </svg>
-                      Lalamove is currently supported for Bulacan and Metro Manila / Quezon City deliveries only.
+                    <p className="text-[11px] text-[#6B6B6B] mt-2 flex items-center gap-1.5">
+                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-black" />
+                      Lalamove express dispatch is available for Bulacan and Metro Manila / Quezon City deliveries.
                     </p>
                   )}
                   <p className="text-[11px] text-[#888] mt-2">
