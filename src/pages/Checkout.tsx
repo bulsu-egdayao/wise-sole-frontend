@@ -696,12 +696,9 @@ export default function Checkout() {
                       </div>
                     </div>
 
-                    <div className="text-right flex items-center gap-2">
-                      <span className="text-[10px] tracking-wider uppercase text-green-700 bg-green-50 px-2 py-0.5 border border-green-200 font-semibold">
+                    <div className="text-right">
+                      <span className="text-[10px] tracking-wider uppercase text-green-700 bg-green-50 px-2.5 py-1 border border-green-200 font-semibold">
                         Free Shipping
-                      </span>
-                      <span className="text-[12px] md:text-[13px] font-medium tracking-[0.12em] uppercase text-black">
-                        GCASH
                       </span>
                     </div>
                   </div>
@@ -859,12 +856,9 @@ export default function Checkout() {
                       </div>
                     </div>
 
-                    <div className="text-right flex items-center gap-2">
-                      <span className="text-[10px] tracking-wider uppercase text-green-700 bg-green-50 px-2 py-0.5 border border-green-200 font-semibold">
+                    <div className="text-right">
+                      <span className="text-[10px] tracking-wider uppercase text-green-700 bg-green-50 px-2.5 py-1 border border-green-200 font-semibold">
                         Free Shipping
-                      </span>
-                      <span className="text-[12px] md:text-[13px] font-medium tracking-[0.12em] uppercase text-black">
-                        MARIBANK
                       </span>
                     </div>
                   </div>
@@ -1026,12 +1020,9 @@ export default function Checkout() {
                       </div>
                     </div>
 
-                    <div className="text-right flex items-center gap-2">
-                      <span className="text-[10px] tracking-wider uppercase text-[#777] bg-[#F5F5F5] px-2 py-0.5 border border-[#EAEAEA] font-medium">
+                    <div className="text-right">
+                      <span className="text-[10px] tracking-wider uppercase text-[#666] bg-[#F5F5F5] px-2.5 py-1 border border-[#EAEAEA] font-medium">
                         + Shipping Fee
-                      </span>
-                      <span className="text-[12px] md:text-[13px] font-medium tracking-[0.12em] uppercase text-black">
-                        CASH ON DELIVERY
                       </span>
                     </div>
                   </div>
