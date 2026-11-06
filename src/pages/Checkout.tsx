@@ -450,17 +450,9 @@ export default function Checkout() {
       <SiteHeader />
 
       <main className="max-w-[1280px] mx-auto px-5 md:px-10 py-10 md:py-16">
-        <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-[#EAEAEA] pb-6">
-          <div>
-            <p className="text-[10px] tracking-[0.15em] uppercase text-[#6B6B6B] mb-1">Wise Sole Checkout</p>
-            <h1 className="text-[26px] md:text-[32px] font-semibold tracking-tight">Complete Your Order</h1>
-          </div>
-          <a
-            href="/shop"
-            className="inline-flex items-center gap-2 text-[11px] tracking-[0.12em] uppercase text-[#6B6B6B] hover:text-black transition-colors border border-[#EAEAEA] px-4 py-2.5 self-start sm:self-auto hover:border-black"
-          >
-            ← Cancel &amp; Return to Shop
-          </a>
+        <div className="mb-8">
+          <p className="text-[10px] tracking-[0.15em] uppercase text-[#6B6B6B] mb-1">Wise Sole Checkout</p>
+          <h1 className="text-[26px] md:text-[32px] font-semibold tracking-tight">Complete Your Order</h1>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 md:gap-14 items-start">
