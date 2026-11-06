@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import SiteHeader from "../components/SiteHeader";
 import { trackOrder } from "../services/orderApi";
 import type { Order } from "../types/order";
@@ -82,7 +82,9 @@ export default function OrderTracking() {
               Thank You For Your Order!
             </h1>
             <p className="text-[13px] text-white/80 max-w-[500px] mx-auto leading-relaxed">
-              We received your order and payment details. We will verify your receipt and prepare your parcel for courier pickup shortly.
+              {order.payment_method === "cod"
+                ? "We received your order. Our team will prepare and dispatch your parcel via LBC Express Cash on Delivery shortly."
+                : "We received your order and payment details. We will verify your receipt and prepare your parcel for courier pickup shortly."}
             </p>
           </div>
         )}
@@ -284,7 +286,7 @@ export default function OrderTracking() {
                     <span className="text-black font-medium">{order.shipping_fee === 0 ? "FREE" : peso(order.shipping_fee)}</span>
                   </div>
                   <div className="border-t border-[#EAEAEA] pt-2 flex justify-between text-[14px] font-bold text-black">
-                    <span>Total Paid</span>
+                    <span>{order.payment_method === "cod" ? "Total Due on Delivery" : "Total Paid"}</span>
                     <span>{peso(order.total_amount)}</span>
                   </div>
                 </div>

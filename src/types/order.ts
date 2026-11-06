@@ -45,7 +45,7 @@ export interface Order {
   voucher_code?: string | null;
   shipping_fee: number;
   total_amount: number;
-  payment_method: "gcash" | "maribank";
+  payment_method: "gcash" | "maribank" | "cod";
   payment_reference?: string | null;
   receipt_image_path?: string | null;
   courier_name?: string | null;

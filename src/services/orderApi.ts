@@ -96,6 +96,8 @@ export async function getPaymentSettings(): Promise<PaymentSettings> {
   return res.json() as Promise<PaymentSettings>;
 }
 
+
+
 export async function getMyOrders(): Promise<Order[]> {
   const res = await fetch(`${API_URL}/my-orders`, {
     headers: authHeaders(),
@@ -236,12 +238,4 @@ export async function updatePaymentSettings(
   return res.json() as Promise<PaymentSettings>;
 }
 
-export async function getMyOrders(): Promise<Order[]> {
-  const res = await fetch(`${API_URL}/my-orders`, {
-    headers: authHeaders(),
-  });
-  if (!res.ok) {
-    throw new Error("Failed to load your orders");
-  }
-  return res.json();
-}
+

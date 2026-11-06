@@ -122,6 +122,38 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
+  // Shoe sizes 35–47 including half sizes (35, 35.5, 36, 36.5 ... 47)
+  const SHOE_SIZES: string[] = [];
+  for (let i = 35; i <= 47; i += 0.5) {
+    SHOE_SIZES.push(Number.isInteger(i) ? String(i) : String(i));
+  }
+  const APPAREL_SIZES = ["XXS", "XS", "S", "M", "L", "XL", "XXL"];
+
+  // Helper to generate random stock between 5 and 8 (5, 6, 7, 8) as requested
+  const getRandomStock = () => String(Math.floor(Math.random() * 4) + 5);
+
+  const prefillShoeSizes = (randomStock = false) => {
+    const newSizes = SHOE_SIZES.map((sz) => ({
+      size: sz,
+      stock: randomStock ? getRandomStock() : "5",
+    }));
+    setForm((prev) => ({ ...prev, sizes: newSizes }));
+  };
+
+  const clearAllSizes = () => {
+    setForm((prev) => ({ ...prev, sizes: [] }));
+  };
+
+  const adjustStock = (index: number, delta: number) => {
+    setForm((prev) => {
+      const copy = [...prev.sizes];
+      const cur = parseInt(copy[index]?.stock || "0", 10) || 0;
+      const next = Math.max(0, cur + delta);
+      copy[index] = { ...copy[index], stock: String(next) };
+      return { ...prev, sizes: copy };
+    });
+  };
+
   const addSizeRow = () => {
     setForm((prev) => ({ ...prev, sizes: [...prev.sizes, { size: "", stock: "0" }] }));
   };
@@ -142,11 +174,6 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
     form.sizes.some((s) => s.size.trim().toUpperCase() === size.toUpperCase());
 
   // Shoe sizes 35–47 including half sizes (35, 35.5, 36, 36.5 ... 47)
-  const SHOE_SIZES: string[] = [];
-  for (let i = 35; i <= 47; i += 0.5) {
-    SHOE_SIZES.push(Number.isInteger(i) ? String(i) : String(i));
-  }
-  const APPAREL_SIZES = ["XXS", "XS", "S", "M", "L", "XL", "XXL"];
 
   const selectedCategory = categories.find((c) => String(c.id) === form.category_id);
   const selectedCategoryName = (selectedCategory?.name || "").toLowerCase();
@@ -680,45 +707,6 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
                   + Add Custom Size
                 </button>
               </div>
-            </div>
-                  ))}
-                </div>
-              )}
-
-              {(showShoePreset || showApparelPreset) && (
-                <div className="mb-4">
-                  <p className="text-[10px] tracking-[0.08em] uppercase text-[#6B6B6B] mb-2">
-                    Tap to select sizes
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {(showShoePreset ? SHOE_SIZES : APPAREL_SIZES).map((size) => {
-                      const active = isSizeSelected(size);
-                      return (
-                        <button
-                          key={size}
-                          type="button"
-                          onClick={() => toggleSize(size)}
-                          className={`text-[12px] px-3 py-2 border transition-colors duration-200 ${
-                            active
-                              ? "bg-black text-white border-black"
-                              : "border-[#EAEAEA] text-black hover:border-black"
-                          }`}
-                        >
-                          {size}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              <button
-                type="button"
-                onClick={addSizeRow}
-                className="text-[11px] tracking-[0.08em] uppercase border border-[#EAEAEA] px-4 py-2.5 hover:border-black transition-colors duration-200"
-              >
-                + Add Size
-              </button>
             </div>
 
             <div className="flex flex-col gap-3">

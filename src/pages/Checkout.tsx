@@ -1,14 +1,12 @@
-﻿import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useCart } from "../context/CartContext";
 import SiteHeader from "../components/SiteHeader";
 import { validateVoucher, createOrder, getPaymentSettings } from "../services/orderApi";
 import type { PaymentSettings } from "../types/order";
 
-// Courier logos
-import jtLogo from "../assets/courier-jt.png";
-import flashLogo from "../assets/courier-flash.jpg";
-import lbcLogo from "../assets/courier-lbc.png";
-import lalamoveLogo from "../assets/courier-lalamove.jpg";
+// Payment method official brand logos
+import gcashLogo from "../assets/payment-gcash.png";
+import maribankLogo from "../assets/payment-maribank.png";
 
 function peso(val: number) {
   return "\u20B1" + Math.round(val).toLocaleString("en-PH");
@@ -32,44 +30,6 @@ async function fetchPsgc(url: string): Promise<PsgcItem[]> {
     return [];
   }
 }
-
-// ─── Courier config with official logos ──────────────────────────────────────
-interface CourierInfo {
-  name: string;
-  shortLabel: string;
-  eta: string;
-  logo: string;
-}
-
-const COURIERS: CourierInfo[] = [
-  {
-    name: "J&T Express",
-    shortLabel: "J&T Express",
-    eta: "2-4 Business Days",
-    logo: jtLogo,
-  },
-  {
-    name: "Flash Express",
-    shortLabel: "Flash Express",
-    eta: "2-4 Business Days",
-    logo: flashLogo,
-  },
-  {
-    name: "LBC Express",
-    shortLabel: "LBC Express",
-    eta: "3-5 Business Days",
-    logo: lbcLogo,
-  },
-  {
-    name: "Lalamove",
-    shortLabel: "Lalamove (Same/Next Day)",
-    eta: "Same-Day / Next-Day Booking",
-    logo: lalamoveLogo,
-  },
-];
-
-// Provinces where Lalamove is available
-const LALAMOVE_PROVINCES = ["Metro Manila (NCR)", "Bulacan"];
 
 async function compressReceiptImage(file: File): Promise<File> {
   return new Promise((resolve) => {
@@ -132,7 +92,6 @@ export default function Checkout() {
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
   const [houseStreet, setHouseStreet] = useState("");
-  const [courierName, setCourierName] = useState("J&T Express");
   const [deliveryNotes, setDeliveryNotes] = useState("");
 
   // Philippine address dropdowns
@@ -147,8 +106,8 @@ export default function Checkout() {
   const [loadingCities, setLoadingCities] = useState(false);
   const [loadingBarangays, setLoadingBarangays] = useState(false);
 
-  // Payment method
-  const [paymentMethod, setPaymentMethod] = useState<"gcash" | "maribank">("gcash");
+  // Payment method: H&M Accordion (gcash | maribank | cod)
+  const [paymentMethod, setPaymentMethod] = useState<"gcash" | "maribank" | "cod">("gcash");
   const [paymentReference, setPaymentReference] = useState("");
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
@@ -207,10 +166,6 @@ export default function Checkout() {
     setCities([]);
     setBarangays([]);
 
-    if (courierName === "Lalamove" && !LALAMOVE_PROVINCES.includes(name)) {
-      setCourierName("J&T Express");
-    }
-
     if (!code) return;
 
     setLoadingCities(true);
@@ -222,7 +177,7 @@ export default function Checkout() {
     }
     setCities(fetched);
     setLoadingCities(false);
-  }, [courierName]);
+  }, []);
 
   // ─── Load barangays when city changes ──────────────────────────────────────
   const handleCityChange = useCallback(async (code: string, name: string) => {
@@ -239,14 +194,17 @@ export default function Checkout() {
     setLoadingBarangays(false);
   }, []);
 
-  // ─── Derived ───────────────────────────────────────────────────────────────
-  const isLalamoveAvailable = LALAMOVE_PROVINCES.includes(selectedProvince);
+  // ─── Derived calculations ──────────────────────────────────────────────────
   const deliveryAddress = [houseStreet, selectedBarangay, selectedCity, selectedProvince]
     .filter(Boolean)
     .join(", ");
 
   const activeQrUrl =
-    paymentMethod === "gcash" ? paymentSettings.gcash_qr_url : paymentSettings.maribank_qr_url;
+    paymentMethod === "gcash"
+      ? paymentSettings.gcash_qr_url
+      : paymentMethod === "maribank"
+      ? paymentSettings.maribank_qr_url
+      : null;
 
   const handleCopy = (text: string, key: string) => {
     navigator.clipboard.writeText(text);
@@ -314,11 +272,11 @@ export default function Checkout() {
     }
   };
 
+  // COD orders automatically include ₱150 LBC Express shipping fee
+  const isCod = paymentMethod === "cod";
+  const shippingFee = isCod ? 150 : 0;
   const discountAmount = appliedVoucher ? appliedVoucher.discountAmount : 0;
-  const shippingFee = 0; // Free shipping promo
   const grandTotal = Math.max(0, subtotal - discountAmount + shippingFee);
-
-  const selectedCourierInfo = COURIERS.find((c) => c.name === courierName) || COURIERS[0];
 
   const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -344,8 +302,9 @@ export default function Checkout() {
       return;
     }
 
-    if (!receiptFile && !paymentReference.trim()) {
-      setSubmitError("Please provide your Payment Reference Number or upload a screenshot of your payment receipt.");
+    // GCash and MariBank require proof of payment; COD does not
+    if (!isCod && !receiptFile && !paymentReference.trim()) {
+      setSubmitError("Please enter your Reference Number or upload a screenshot of your payment receipt.");
       return;
     }
 
@@ -360,7 +319,9 @@ export default function Checkout() {
       formData.append("delivery_city", selectedCity);
       formData.append("delivery_province", selectedProvince);
       if (deliveryNotes.trim()) formData.append("delivery_notes", deliveryNotes.trim());
-      formData.append("courier_name", courierName);
+      
+      // Courier is assigned by Admin upon dispatch; COD orders ship via LBC Express
+      formData.append("courier_name", isCod ? "LBC Express" : "To Be Assigned");
       formData.append("payment_method", paymentMethod);
       if (paymentReference.trim()) formData.append("payment_reference", paymentReference.trim());
       if (appliedVoucher) formData.append("voucher_code", appliedVoucher.code);
@@ -375,7 +336,7 @@ export default function Checkout() {
       }));
       formData.append("items", JSON.stringify(itemsPayload));
 
-      if (receiptFile) {
+      if (receiptFile && !isCod) {
         formData.append("receipt_image", receiptFile);
       }
 
@@ -409,7 +370,7 @@ export default function Checkout() {
           <p className="text-[13px] text-[#6B6B6B] mb-8">Add sneakers or streetwear to your bag before checking out.</p>
           <a
             href="/shop"
-            className="inline-block bg-black text-white text-[11px] tracking-[0.15em] uppercase px-8 py-3.5 hover:bg-[#1a1a1a] transition-colors"
+            className="inline-block bg-black text-white text-[11px] tracking-[0.15em] uppercase px-8 py-3.5 hover:bg-[#1a1a1a] transition-all hover:-translate-y-0.5"
           >
             Explore Catalog
           </a>
@@ -442,7 +403,7 @@ export default function Checkout() {
               </div>
             )}
 
-            {/* STEP 1: CUSTOMER & DELIVERY INFO */}
+            {/* STEP 1: CUSTOMER & DELIVERY INFO (Courier selection removed as requested) */}
             <section className="border-b border-[#EAEAEA] pb-10">
               <div className="flex items-center gap-2 mb-6">
                 <span className="w-6 h-6 rounded-full bg-black text-white text-[11px] font-bold flex items-center justify-center">
@@ -607,270 +568,428 @@ export default function Checkout() {
                     type="text"
                     value={deliveryNotes}
                     onChange={(e) => setDeliveryNotes(e.target.value)}
-                    placeholder="e.g. Gate code: 1234, Landmark: near sari-sari store"
+                    placeholder="e.g. Landmark: near church, leave at front gate"
                     className="w-full bg-[#F5F5F5] border border-[#EAEAEA] px-4 py-3 text-[14px] outline-none focus:border-black transition-colors"
                   />
                 </div>
 
-                {/* ─── Courier Preference (H&M Minimalist UI/UX) ─── */}
-                <div className="md:col-span-2">
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="block text-[11px] tracking-[0.1em] uppercase text-[#6B6B6B] font-medium">
-                      Delivery Option
-                    </label>
-                    <span className="text-[11px] text-[#767676]">
-                      Standard: 2–4 Business Days
-                    </span>
+                {/* Reassurance Banner: Admin handles courier dispatch */}
+                <div className="md:col-span-2 mt-2 p-3.5 bg-[#FAFAFA] border border-[#EAEAEA] flex items-start gap-3">
+                  <svg className="w-4 h-4 text-black shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.7">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 0 0-3.213-9.193 2.056 2.056 0 0 0-1.58-.86H14.25M16.5 18.75h-2.25m0-11.25V3.75a1.125 1.125 0 0 0-1.125-1.125h-6.75A1.125 1.125 0 0 0 4.5 3.75v10.5" />
+                  </svg>
+                  <div className="text-[11px] text-[#6B6B6B] leading-relaxed">
+                    <span className="font-semibold text-black uppercase tracking-wider block mb-0.5">Dispatched by Wise Sole Fulfillment</span>
+                    Wise Sole partners with premium couriers (J&amp;T Express, Flash Express, and LBC Express). Our dispatch team selects the fastest route for your address and provides live tracking within 24 hours.
                   </div>
-
-                  <div className="border border-[#EAEAEA] divide-y divide-[#EAEAEA] bg-white">
-                    {COURIERS.map((c) => {
-                      const isDisabled = c.name === "Lalamove" && !isLalamoveAvailable;
-                      const isSelected = courierName === c.name;
-                      return (
-                        <div
-                          key={c.name}
-                          onClick={() => !isDisabled && setCourierName(c.name)}
-                          className={`flex items-center justify-between p-3.5 sm:p-4 transition-all ${
-                            isDisabled
-                              ? "opacity-40 bg-[#FAFAFA] cursor-not-allowed"
-                              : isSelected
-                              ? "bg-[#FAFAFA] cursor-pointer"
-                              : "hover:bg-[#FDFDFD] cursor-pointer"
-                          }`}
-                        >
-                          <div className="flex items-center gap-3.5 min-w-0">
-                            {/* H&M Minimalist Radio */}
-                            <div
-                              className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition-colors ${
-                                isSelected ? "border-black" : "border-[#BBB]"
-                              }`}
-                            >
-                              {isSelected && <div className="w-2 h-2 rounded-full bg-black" />}
-                            </div>
-
-                            {/* Small clean courier logo badge */}
-                            <div className="w-8 h-8 rounded-full border border-[#EAEAEA] bg-white p-0.5 shrink-0 flex items-center justify-center overflow-hidden">
-                              <img src={c.logo} alt={c.name} className="w-full h-full object-contain" />
-                            </div>
-
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-2">
-                                <p className="text-[13px] font-medium text-black tracking-tight">{c.name}</p>
-                                {isSelected && (
-                                  <span className="text-[9px] uppercase tracking-wider bg-black text-white px-1.5 py-0.5 font-semibold">
-                                    Selected
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-[11px] text-[#767676] mt-0.5">
-                                {isDisabled
-                                  ? "Available for Bulacan & Metro Manila only"
-                                  : c.eta}
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="text-right shrink-0 ml-3">
-                            <span className="text-[12px] font-semibold text-black tracking-wider uppercase">
-                              Free
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {courierName === "Lalamove" && (
-                    <p className="text-[11px] text-[#6B6B6B] mt-2 flex items-center gap-1.5">
-                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-black" />
-                      Lalamove express dispatch is available for Bulacan and Metro Manila / Quezon City deliveries.
-                    </p>
-                  )}
-                  <p className="text-[11px] text-[#888] mt-2">
-                    {paymentSettings.shipping_note}
-                  </p>
                 </div>
               </div>
             </section>
 
-            {/* STEP 2: PAYMENT METHOD (GCash & MariBank) */}
+            {/* STEP 2: PAYMENT METHOD (H&M MINIMALIST RADIO ACCORDION TEMPLATE) */}
             <section className="border-b border-[#EAEAEA] pb-10">
               <div className="flex items-center gap-2 mb-6">
                 <span className="w-6 h-6 rounded-full bg-black text-white text-[11px] font-bold flex items-center justify-center">
                   2
                 </span>
-                <h2 className="text-[16px] font-semibold uppercase tracking-[0.08em]">Payment Instructions</h2>
+                <h2 className="text-[16px] font-semibold uppercase tracking-[0.08em]">Payment Method</h2>
               </div>
 
-              {/* Method Selector Tabs */}
-              <div className="grid grid-cols-2 gap-3 mb-6">
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod("gcash")}
-                  className={`py-3.5 px-4 border text-center transition-all flex items-center justify-center gap-2 ${
-                    paymentMethod === "gcash"
-                      ? "border-blue-600 bg-blue-50/50 text-blue-900 font-semibold shadow-xs"
-                      : "border-[#EAEAEA] text-[#6B6B6B] hover:border-black"
-                  }`}
-                >
-                  <div className={`w-3 h-3 rounded-full border ${paymentMethod === "gcash" ? "border-blue-600 bg-blue-600" : "border-gray-400"}`} />
-                  <span className="text-[13px] tracking-wide">GCash</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod("maribank")}
-                  className={`py-3.5 px-4 border text-center transition-all flex items-center justify-center gap-2 ${
-                    paymentMethod === "maribank"
-                      ? "border-amber-600 bg-amber-50/50 text-amber-900 font-semibold shadow-xs"
-                      : "border-[#EAEAEA] text-[#6B6B6B] hover:border-black"
-                  }`}
-                >
-                  <div className={`w-3 h-3 rounded-full border ${paymentMethod === "maribank" ? "border-amber-600 bg-amber-600" : "border-gray-400"}`} />
-                  <span className="text-[13px] tracking-wide">MariBank (Shopee)</span>
-                </button>
-              </div>
-
-              {/* Payment Details Box with Large Visible QR */}
-              <div className="p-6 md:p-8 bg-[#F9F9F9] border border-[#EAEAEA] mb-6">
-                <div className="flex flex-col md:flex-row gap-6 md:gap-8 items-center md:items-start">
-                  {/* Large Scannable QR Code */}
-                  {activeQrUrl && (
-                    <div className="flex flex-col items-center gap-2.5 shrink-0">
+              {/* H&M Minimalist Stacked Radio Accordion */}
+              <div className="border border-[#EAEAEA] divide-y divide-[#EAEAEA] bg-white">
+                
+                {/* ─── OPTION 1: GCASH ─── */}
+                <div className="transition-colors">
+                  <div
+                    onClick={() => setPaymentMethod("gcash")}
+                    className={`flex items-center justify-between p-4 cursor-pointer select-none transition-colors ${
+                      paymentMethod === "gcash" ? "bg-[#FAFAFA]" : "hover:bg-[#FDFDFD]"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3.5">
+                      {/* H&M Custom Radio */}
                       <div
-                        onClick={() => setZoomQr(activeQrUrl)}
-                        className="group relative w-56 h-56 sm:w-60 sm:h-60 bg-white p-3 border-2 border-[#EAEAEA] shadow-md cursor-pointer hover:border-black transition-all"
-                        title="Click to view full screen"
+                        className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition-all ${
+                          paymentMethod === "gcash" ? "border-black" : "border-[#BBB]"
+                        }`}
                       >
-                        <img
-                          src={activeQrUrl}
-                          alt={`${paymentMethod} QR Code`}
-                          className="w-full h-full object-contain"
-                        />
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-[11px] font-semibold tracking-wider uppercase">
-                          Click to Enlarge
+                        {paymentMethod === "gcash" && <div className="w-2 h-2 rounded-full bg-black" />}
+                      </div>
+
+                      {/* GCash Official Logo */}
+                      <div className="h-6 flex items-center">
+                        <img src={gcashLogo} alt="GCash" className="h-5 md:h-6 object-contain" />
+                      </div>
+                    </div>
+
+                    <div className="text-right">
+                      <span className="text-[12px] md:text-[13px] font-medium tracking-[0.12em] uppercase text-black">
+                        GCASH
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Expanded GCash Accordion Body */}
+                  {paymentMethod === "gcash" && (
+                    <div className="px-4 md:px-6 pb-6 pt-2 bg-[#FAFAFA] border-t border-[#EAEAEA] animate-in fade-in duration-200">
+                      <div className="p-4 md:p-6 bg-white border border-[#EAEAEA] mb-5">
+                        <div className="flex flex-col md:flex-row gap-6 items-center md:items-start">
+                          {/* Large Visible QR */}
+                          {paymentSettings.gcash_qr_url && (
+                            <div className="flex flex-col items-center gap-2.5 shrink-0">
+                              <div
+                                onClick={() => setZoomQr(paymentSettings.gcash_qr_url!)}
+                                className="group relative w-52 h-52 sm:w-56 sm:h-56 bg-white p-2.5 border-2 border-black/80 shadow-md cursor-pointer hover:border-black transition-all"
+                                title="Click to view full screen"
+                              >
+                                <img
+                                  src={paymentSettings.gcash_qr_url}
+                                  alt="GCash QR Code"
+                                  className="w-full h-full object-contain"
+                                />
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-[11px] font-semibold tracking-wider uppercase">
+                                  Click to Enlarge
+                                </div>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={handleDownloadQr}
+                                className="w-full py-2 px-3 bg-white border border-[#DDD] hover:border-black text-[11px] font-medium uppercase tracking-wider text-black flex items-center justify-center gap-1.5 transition-colors shadow-xs"
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                                <span>Save QR to Photos</span>
+                              </button>
+                            </div>
+                          )}
+
+                          <div className="flex-1 space-y-4 w-full">
+                            <div>
+                              <p className="text-[10px] tracking-[0.1em] uppercase text-[#888]">Account Name</p>
+                              <p className="text-[16px] font-bold text-black tracking-tight">
+                                {paymentSettings.gcash_name}
+                              </p>
+                            </div>
+
+                            <div>
+                              <p className="text-[10px] tracking-[0.1em] uppercase text-[#888]">GCash Mobile Number</p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className="text-[20px] font-mono font-bold tracking-wider text-black">
+                                  {paymentSettings.gcash_number}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleCopy(paymentSettings.gcash_number, "gcash")}
+                                  className="text-[11px] uppercase tracking-wider bg-white border border-[#DDD] px-3 py-1.5 text-black hover:border-black transition-colors font-medium"
+                                >
+                                  {copiedKey === "gcash" ? "Copied!" : "Copy"}
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="pt-3 border-t border-[#EAEAEA] space-y-1">
+                              <p className="text-[12px] text-black font-semibold">
+                                Exact Amount: <span className="text-[15px] underline">{peso(grandTotal)}</span>
+                              </p>
+                              <p className="text-[11px] text-[#6B6B6B] leading-relaxed">
+                                Send via GCash app, then enter your Reference Number and upload the receipt screenshot below.
+                              </p>
+                            </div>
+                          </div>
                         </div>
                       </div>
 
-                      {/* 1-CLICK SAVE QR TO PHOTOS FOR MOBILE SHOPPERS */}
-                      <button
-                        type="button"
-                        onClick={handleDownloadQr}
-                        className="w-full py-2 px-3 bg-white border border-[#DDD] hover:border-black text-[11px] font-medium uppercase tracking-wider text-black flex items-center justify-center gap-1.5 transition-colors shadow-xs"
-                      >
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                        </svg>
-                        <span>Save QR to Photos</span>
-                      </button>
-                      <span className="text-[10px] text-[#888] text-center">
-                        Upload to {paymentMethod === "gcash" ? "GCash" : "MariBank"} via Scan from Gallery
-                      </span>
+                      {/* Proof Inputs */}
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-[11px] tracking-[0.08em] uppercase text-[#6B6B6B] mb-1.5">
+                            GCash Reference Number <span className="text-[10px] text-[#888] lowercase">(Ref No. on receipt)</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={paymentReference}
+                            onChange={(e) => setPaymentReference(e.target.value)}
+                            placeholder="e.g. 1002 9847 1234"
+                            className="w-full bg-white border border-[#EAEAEA] px-4 py-3 text-[14px] outline-none focus:border-black font-mono transition-colors"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] tracking-[0.08em] uppercase text-[#6B6B6B] mb-1.5">
+                            Upload Payment Receipt Screenshot <span className="text-red-500">*</span>
+                          </label>
+                          {receiptPreview ? (
+                            <div className="relative border border-[#EAEAEA] p-3 bg-white flex items-center gap-4">
+                              <img src={receiptPreview} alt="Receipt preview" className="w-16 h-20 object-cover border border-[#DDD]" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[13px] font-medium text-black truncate">{receiptFile?.name}</p>
+                                <p className="text-[11px] text-green-600 mt-0.5">{"\u2713"} Compressed and ready to upload</p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setReceiptFile(null);
+                                  setReceiptPreview(null);
+                                }}
+                                className="text-[11px] text-red-600 uppercase tracking-wider hover:underline px-2 py-1"
+                              >
+                                Change
+                              </button>
+                            </div>
+                          ) : (
+                            <label className="border-2 border-dashed border-[#DDD] hover:border-black p-5 text-center cursor-pointer block transition-colors bg-white">
+                              <span className="text-[12px] font-medium uppercase tracking-wider text-black block mb-0.5">
+                                Click to select screenshot
+                              </span>
+                              <span className="text-[11px] text-[#888]">JPG, PNG, or WEBP up to 8MB</span>
+                              <input
+                                type="file"
+                                accept="image/png,image/jpeg,image/webp"
+                                className="hidden"
+                                onChange={handleReceiptChange}
+                              />
+                            </label>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   )}
+                </div>
 
-                  <div className="flex-1 space-y-4 w-full">
-                    <div>
-                      <p className="text-[10px] tracking-[0.1em] uppercase text-[#888]">Account Name</p>
-                      <p className="text-[16px] font-bold text-black tracking-tight">
-                        {paymentMethod === "gcash" ? paymentSettings.gcash_name : paymentSettings.maribank_name}
-                      </p>
-                    </div>
+                {/* ─── OPTION 2: MARIBANK ─── */}
+                <div className="transition-colors">
+                  <div
+                    onClick={() => setPaymentMethod("maribank")}
+                    className={`flex items-center justify-between p-4 cursor-pointer select-none transition-colors ${
+                      paymentMethod === "maribank" ? "bg-[#FAFAFA]" : "hover:bg-[#FDFDFD]"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3.5">
+                      {/* H&M Custom Radio */}
+                      <div
+                        className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition-all ${
+                          paymentMethod === "maribank" ? "border-black" : "border-[#BBB]"
+                        }`}
+                      >
+                        {paymentMethod === "maribank" && <div className="w-2 h-2 rounded-full bg-black" />}
+                      </div>
 
-                    <div>
-                      <p className="text-[10px] tracking-[0.1em] uppercase text-[#888]">Account Number</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-[20px] font-mono font-bold tracking-wider text-black">
-                          {paymentMethod === "gcash" ? paymentSettings.gcash_number : paymentSettings.maribank_number}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleCopy(
-                              paymentMethod === "gcash"
-                                ? paymentSettings.gcash_number
-                                : paymentSettings.maribank_number,
-                              paymentMethod
-                            )
-                          }
-                          className="text-[11px] uppercase tracking-wider bg-white border border-[#DDD] px-3 py-1.5 text-black hover:border-black transition-colors font-medium"
-                        >
-                          {copiedKey === paymentMethod ? "Copied!" : "Copy Number"}
-                        </button>
+                      {/* MariBank Official Logo */}
+                      <div className="h-6 flex items-center">
+                        <img src={maribankLogo} alt="MariBank" className="h-5 md:h-6 object-contain" />
                       </div>
                     </div>
 
-                    <div className="pt-3 border-t border-[#EAEAEA] space-y-1.5">
-                      <p className="text-[12px] text-black font-semibold">
-                        Exact Amount to Send: <span className="text-[15px] underline">{peso(grandTotal)}</span>
-                      </p>
-                      <p className="text-[11px] text-[#6B6B6B] leading-relaxed">
-                        Scan the QR code or send to the number above, then enter the Reference Number and upload your payment screenshot below.
-                      </p>
+                    <div className="text-right">
+                      <span className="text-[12px] md:text-[13px] font-medium tracking-[0.12em] uppercase text-black">
+                        MARIBANK
+                      </span>
                     </div>
                   </div>
-                </div>
-              </div>
 
-              {/* Reference Number & Proof Upload */}
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-[11px] tracking-[0.08em] uppercase text-[#6B6B6B] mb-1.5">
-                    Payment Reference / Ref Number <span className="text-[10px] text-[#888] lowercase">(from GCash/MariBank receipt)</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={paymentReference}
-                    onChange={(e) => setPaymentReference(e.target.value)}
-                    placeholder="e.g. 1002 9847 1234"
-                    className="w-full bg-[#F5F5F5] border border-[#EAEAEA] px-4 py-3 text-[14px] outline-none focus:border-black font-mono transition-colors"
-                  />
-                </div>
+                  {/* Expanded MariBank Accordion Body */}
+                  {paymentMethod === "maribank" && (
+                    <div className="px-4 md:px-6 pb-6 pt-2 bg-[#FAFAFA] border-t border-[#EAEAEA] animate-in fade-in duration-200">
+                      <div className="p-4 md:p-6 bg-white border border-[#EAEAEA] mb-5">
+                        <div className="flex flex-col md:flex-row gap-6 items-center md:items-start">
+                          {/* Large Visible QR */}
+                          {paymentSettings.maribank_qr_url && (
+                            <div className="flex flex-col items-center gap-2.5 shrink-0">
+                              <div
+                                onClick={() => setZoomQr(paymentSettings.maribank_qr_url!)}
+                                className="group relative w-52 h-52 sm:w-56 sm:h-56 bg-white p-2.5 border-2 border-black/80 shadow-md cursor-pointer hover:border-black transition-all"
+                                title="Click to view full screen"
+                              >
+                                <img
+                                  src={paymentSettings.maribank_qr_url}
+                                  alt="MariBank QR Code"
+                                  className="w-full h-full object-contain"
+                                />
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-[11px] font-semibold tracking-wider uppercase">
+                                  Click to Enlarge
+                                </div>
+                              </div>
 
-                <div>
-                  <label className="block text-[11px] tracking-[0.08em] uppercase text-[#6B6B6B] mb-1.5">
-                    Upload Screenshot of Receipt / Proof of Payment <span className="text-red-500">*</span>
-                  </label>
-                  
-                  {receiptPreview ? (
-                    <div className="relative border border-[#EAEAEA] p-3 bg-[#F9F9F9] flex items-center gap-4">
-                      <img src={receiptPreview} alt="Receipt preview" className="w-16 h-20 object-cover border border-[#DDD]" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[13px] font-medium text-black truncate">{receiptFile?.name}</p>
-                        <p className="text-[11px] text-green-600 mt-0.5">{"\u2713"} Ready to upload</p>
+                              <button
+                                type="button"
+                                onClick={handleDownloadQr}
+                                className="w-full py-2 px-3 bg-white border border-[#DDD] hover:border-black text-[11px] font-medium uppercase tracking-wider text-black flex items-center justify-center gap-1.5 transition-colors shadow-xs"
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                                <span>Save QR to Photos</span>
+                              </button>
+                            </div>
+                          )}
+
+                          <div className="flex-1 space-y-4 w-full">
+                            <div>
+                              <p className="text-[10px] tracking-[0.1em] uppercase text-[#888]">Account Name</p>
+                              <p className="text-[16px] font-bold text-black tracking-tight">
+                                {paymentSettings.maribank_name}
+                              </p>
+                            </div>
+
+                            <div>
+                              <p className="text-[10px] tracking-[0.1em] uppercase text-[#888]">MariBank Account / Phone Number</p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className="text-[20px] font-mono font-bold tracking-wider text-black">
+                                  {paymentSettings.maribank_number}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleCopy(paymentSettings.maribank_number, "maribank")}
+                                  className="text-[11px] uppercase tracking-wider bg-white border border-[#DDD] px-3 py-1.5 text-black hover:border-black transition-colors font-medium"
+                                >
+                                  {copiedKey === "maribank" ? "Copied!" : "Copy"}
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="pt-3 border-t border-[#EAEAEA] space-y-1">
+                              <p className="text-[12px] text-black font-semibold">
+                                Exact Amount: <span className="text-[15px] underline">{peso(grandTotal)}</span>
+                              </p>
+                              <p className="text-[11px] text-[#6B6B6B] leading-relaxed">
+                                Transfer via MariBank / ShopeePay / InstaPay, then enter your Reference Number and upload your receipt screenshot below.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setReceiptFile(null);
-                          setReceiptPreview(null);
-                        }}
-                        className="text-[11px] text-red-600 uppercase tracking-wider hover:underline px-2 py-1"
-                      >
-                        Change
-                      </button>
+
+                      {/* Proof Inputs */}
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-[11px] tracking-[0.08em] uppercase text-[#6B6B6B] mb-1.5">
+                            MariBank Reference Number <span className="text-[10px] text-[#888] lowercase">(Transaction ID)</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={paymentReference}
+                            onChange={(e) => setPaymentReference(e.target.value)}
+                            placeholder="e.g. MB261106-98124"
+                            className="w-full bg-white border border-[#EAEAEA] px-4 py-3 text-[14px] outline-none focus:border-black font-mono transition-colors"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] tracking-[0.08em] uppercase text-[#6B6B6B] mb-1.5">
+                            Upload Payment Receipt Screenshot <span className="text-red-500">*</span>
+                          </label>
+                          {receiptPreview ? (
+                            <div className="relative border border-[#EAEAEA] p-3 bg-white flex items-center gap-4">
+                              <img src={receiptPreview} alt="Receipt preview" className="w-16 h-20 object-cover border border-[#DDD]" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[13px] font-medium text-black truncate">{receiptFile?.name}</p>
+                                <p className="text-[11px] text-green-600 mt-0.5">{"\u2713"} Compressed and ready to upload</p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setReceiptFile(null);
+                                  setReceiptPreview(null);
+                                }}
+                                className="text-[11px] text-red-600 uppercase tracking-wider hover:underline px-2 py-1"
+                              >
+                                Change
+                              </button>
+                            </div>
+                          ) : (
+                            <label className="border-2 border-dashed border-[#DDD] hover:border-black p-5 text-center cursor-pointer block transition-colors bg-white">
+                              <span className="text-[12px] font-medium uppercase tracking-wider text-black block mb-0.5">
+                                Click to select screenshot
+                              </span>
+                              <span className="text-[11px] text-[#888]">JPG, PNG, or WEBP up to 8MB</span>
+                              <input
+                                type="file"
+                                accept="image/png,image/jpeg,image/webp"
+                                className="hidden"
+                                onChange={handleReceiptChange}
+                              />
+                            </label>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  ) : (
-                    <label className="border-2 border-dashed border-[#DDD] hover:border-black p-6 text-center cursor-pointer block transition-colors bg-[#FAFAFA]">
-                      <svg viewBox="0 0 24 24" className="w-8 h-8 text-[#888] mx-auto mb-2" fill="none" stroke="currentColor" strokeWidth="1.5">
-                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                        <circle cx="8.5" cy="8.5" r="1.5" />
-                        <polyline points="21 15 16 10 5 21" />
-                      </svg>
-                      <span className="text-[12px] font-medium uppercase tracking-wider text-black block mb-0.5">
-                        Click to select payment screenshot
-                      </span>
-                      <span className="text-[11px] text-[#888]">JPG, PNG, or WEBP up to 8MB</span>
-                      <input
-                        type="file"
-                        accept="image/png,image/jpeg,image/webp"
-                        className="hidden"
-                        onChange={handleReceiptChange}
-                      />
-                    </label>
                   )}
                 </div>
+
+                {/* ─── OPTION 3: CASH ON DELIVERY (COD) ─── */}
+                <div className="transition-colors">
+                  <div
+                    onClick={() => setPaymentMethod("cod")}
+                    className={`flex items-center justify-between p-4 cursor-pointer select-none transition-colors ${
+                      paymentMethod === "cod" ? "bg-[#FAFAFA]" : "hover:bg-[#FDFDFD]"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3.5">
+                      {/* H&M Custom Radio */}
+                      <div
+                        className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition-all ${
+                          paymentMethod === "cod" ? "border-black" : "border-[#BBB]"
+                        }`}
+                      >
+                        {paymentMethod === "cod" && <div className="w-2 h-2 rounded-full bg-black" />}
+                      </div>
+
+                      {/* Minimalist COD Icon */}
+                      <div className="flex items-center gap-1.5 border border-black/80 px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase text-black">
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                          <rect x="2" y="5" width="20" height="14" rx="2" />
+                          <line x1="2" y1="10" x2="22" y2="10" />
+                        </svg>
+                        <span>CASH ON DELIVERY</span>
+                      </div>
+                    </div>
+
+                    <div className="text-right">
+                      <span className="text-[12px] md:text-[13px] font-medium tracking-[0.12em] uppercase text-black">
+                        CASH ON DELIVERY
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Expanded COD Accordion Body */}
+                  {paymentMethod === "cod" && (
+                    <div className="px-4 md:px-6 pb-6 pt-2 bg-[#FAFAFA] border-t border-[#EAEAEA] animate-in fade-in duration-200">
+                      <div className="p-4 md:p-6 bg-white border border-[#EAEAEA] space-y-3.5">
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center shrink-0 mt-0.5">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                            </svg>
+                          </div>
+                          <div>
+                            <h3 className="text-[13px] font-bold uppercase tracking-wider text-black">
+                              LBC Express Cash on Delivery
+                            </h3>
+                            <p className="text-[12px] text-[#555] leading-relaxed mt-1">
+                              Pay in cash directly to the LBC courier upon delivery of your package to your doorstep.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="p-3 bg-[#F9F9F9] border border-[#EAEAEA] space-y-1.5 text-[12px]">
+                          <div className="flex justify-between items-center text-black font-semibold">
+                            <span>Standard LBC Shipping Fee:</span>
+                            <span className="text-black font-bold">₱150</span>
+                          </div>
+                          <p className="text-[11px] text-[#767676] leading-relaxed">
+                            COD orders require shipping handling and are fulfilled nationwide via LBC Express. The ₱150 shipping fee is automatically included in your total.
+                          </p>
+                          <p className="text-[11px] text-green-700 font-medium">
+                            ✓ No receipt screenshot or advance payment needed. Simply prepare exact cash on delivery day.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
               </div>
             </section>
 
@@ -880,7 +999,7 @@ export default function Checkout() {
                 type="button"
                 disabled={submitting}
                 onClick={handleSubmitOrder}
-                className="w-full bg-black text-white text-[13px] tracking-[0.15em] uppercase py-4 hover:bg-[#1a1a1a] transition-colors duration-200 disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg"
+                className="w-full bg-black text-white text-[13px] tracking-[0.15em] uppercase py-4 hover:bg-[#1a1a1a] transition-all hover:-translate-y-0.5 duration-200 disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg"
               >
                 {submitting ? (
                   <>
@@ -888,10 +1007,12 @@ export default function Checkout() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                     </svg>
-                    <span>Processing Order &amp; Uploading Receipt...</span>
+                    <span>Processing Order...</span>
                   </>
                 ) : (
-                  <span>Place Order {"\u2022"} {peso(grandTotal)}</span>
+                  <span>
+                    Place Order {isCod ? "• Cash on Delivery" : ""} • {peso(grandTotal)}
+                  </span>
                 )}
               </button>
               <p className="text-[11px] text-center text-[#888] mt-3">
@@ -991,7 +1112,9 @@ export default function Checkout() {
               )}
 
               <div className="flex justify-between text-[#6B6B6B]">
-                <span>Shipping ({selectedCourierInfo.shortLabel})</span>
+                <span>
+                  Shipping {isCod ? "(LBC Express COD)" : "(Prepaid Promo)"}
+                </span>
                 <span className="text-black font-medium">
                   {shippingFee === 0 ? "FREE" : peso(shippingFee)}
                 </span>

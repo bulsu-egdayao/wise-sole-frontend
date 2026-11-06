@@ -369,7 +369,7 @@ export default function AdminOrders({ onBack }: AdminOrdersProps) {
               {/* PAYMENT & RECEIPT VERIFICATION */}
               <div className="p-4 bg-white border border-[#EAEAEA]">
                 <h3 className="text-[12px] font-bold uppercase tracking-wider text-black mb-3">
-                  Payment Verification ({selectedOrder.payment_method.toUpperCase()})
+                  Payment Method: {selectedOrder.payment_method === "cod" ? "CASH ON DELIVERY (LBC)" : selectedOrder.payment_method.toUpperCase()}
                 </h3>
                 <div className="flex flex-col sm:flex-row gap-6 items-start">
                   {selectedOrder.receipt_image_path ? (
@@ -383,21 +383,32 @@ export default function AdminOrders({ onBack }: AdminOrdersProps) {
                     </div>
                   ) : (
                     <div className="w-36 h-36 border border-dashed border-[#DDD] flex items-center justify-center text-[11px] text-[#888] text-center p-3 shrink-0">
-                      No receipt screenshot uploaded
+                      {selectedOrder.payment_method === "cod"
+                        ? "Cash on Delivery (Pay to LBC courier)"
+                        : "No receipt screenshot uploaded"}
                     </div>
                   )}
 
                   <div className="flex-1 space-y-2.5 text-[13px]">
                     <div>
-                      <span className="text-[10px] uppercase text-[#888]">Reference Number:</span>
+                      <span className="text-[10px] uppercase text-[#888]">
+                        {selectedOrder.payment_method === "cod" ? "Payment Term:" : "Reference Number:"}
+                      </span>
                       <p className="font-mono font-bold text-black text-[15px]">
-                        {selectedOrder.payment_reference || "None entered"}
+                        {selectedOrder.payment_method === "cod"
+                          ? "Cash on Delivery (LBC Express)"
+                          : selectedOrder.payment_reference || "None entered"}
                       </p>
                     </div>
 
                     <div>
-                      <span className="text-[10px] uppercase text-[#888]">Total Paid Amount:</span>
+                      <span className="text-[10px] uppercase text-[#888]">
+                        {selectedOrder.payment_method === "cod" ? "Amount to Collect on Delivery:" : "Total Paid Amount:"}
+                      </span>
                       <p className="font-bold text-black text-[16px]">{peso(selectedOrder.total_amount)}</p>
+                      {selectedOrder.shipping_fee > 0 && (
+                        <p className="text-[11px] text-[#888]">Includes {peso(selectedOrder.shipping_fee)} LBC COD shipping fee</p>
+                      )}
                     </div>
 
                     <div className="pt-2 flex gap-2">
@@ -406,7 +417,7 @@ export default function AdminOrders({ onBack }: AdminOrdersProps) {
                         onClick={() => setModalStatus("payment_verified")}
                         className="bg-blue-600 text-white text-[11px] tracking-[0.1em] uppercase px-4 py-2 hover:bg-blue-700"
                       >
-                        ✓ Mark Payment Verified
+                        {selectedOrder.payment_method === "cod" ? "✓ Confirm COD Order" : "✓ Mark Payment Verified"}
                       </button>
                     </div>
                   </div>
