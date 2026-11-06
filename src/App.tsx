@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from "react";
+﻿import React, { useState, useEffect, useRef } from "react";
 import { getFeaturedProducts, getNewArrivals, getCategories } from "./services/api";
 import type { Product, Category } from "./types/product";
 import ProductCard from "./components/ProductCard";
 import QuickViewModal from "./components/QuickViewModal";
+import SiteHeader from "./components/SiteHeader";
 import { useFavorites } from "./hooks/useFavorites";
 import { getSiteImages, siteImageUrl } from "./services/siteImages";
 import type { SiteImagesMap } from "./services/siteImages";
@@ -212,133 +213,7 @@ useEffect(() => {
   return (
     <div style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" }} className="bg-white text-black min-h-screen w-full">
     
-      {/* HEADER */}
-      <header
-        className={`sticky top-0 z-50 bg-white border-b transition-shadow duration-300 ${
-          scrolled ? "border-[#EAEAEA] shadow-[0_1px_0_0_rgba(0,0,0,0.02)]" : "border-transparent"
-        }`}
-      >
-        <div className="max-w-[1440px] mx-auto px-5 md:px-10">
-          <div className="flex items-center justify-between h-[64px] md:h-[76px]">
-            <button className="md:hidden -ml-1 p-2" onClick={() => setMenuOpen(true)} aria-label="Open menu">
-              <MenuIcon className="w-5 h-5" open={false} />
-            </button>
-
-            <a href="#" className="flex items-center gap-2.5">
-              <img src={LOGO_BLACK} alt="Wise Sole" className="h-9 md:h-11 w-auto" />
-              <span className="hidden md:block text-[15px] font-semibold tracking-[0.08em]">WISE SOLE</span>
-            </a>
-
-            <nav className="hidden md:flex items-center gap-9">
-              {navLinks.map((l) => (
-                <a
-                  key={l.label}
-                  href={l.href}
-                  className="text-[13px] tracking-[0.04em] text-black relative py-2 group"
-                >
-                  {l.label}
-                  <span className="absolute left-0 -bottom-0.5 w-0 h-px bg-black transition-all duration-300 group-hover:w-full" />
-                </a>
-              ))}
-            </nav>
-
-            <div className="flex items-center gap-4">
-              <button onClick={() => setSearchOpen((s) => !s)} aria-label="Search" className="p-2 transition-opacity hover:opacity-60">
-                <SearchIcon className="w-[18px] h-[18px]" />
-              </button>
-              <a
-                href="/favorites"
-                aria-label="View favorites"
-                className="relative p-2 transition-opacity hover:opacity-60"
-              >
-                <HeartIcon className="w-[18px] h-[18px]" filled={favorites.length > 0} />
-                {favorites.length > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 bg-black text-white text-[9px] w-[15px] h-[15px] flex items-center justify-center rounded-full">
-                    {favorites.length}
-                  </span>
-                )}
-              </a>
-              <a
-    href={waLink("Hi Wise Sole! I'd like to know more about your collection.")}
-                target="_blank"
-                rel="noreferrer"
-                className="hidden md:inline-flex items-center text-[11px] tracking-[0.12em] uppercase border border-black px-4 py-2 hover:bg-black hover:text-white transition-colors duration-200"
-              >
-                Inquire Now
-              </a>
-            </div>
-          </div>
-
-          <div
-            className="overflow-hidden transition-all duration-300 ease-out"
-            style={{ maxHeight: searchOpen ? "68px" : "0px" }}
-          >
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (searchQuery.trim()) {
-                  window.location.href = `/shop?search=${encodeURIComponent(searchQuery.trim())}`;
-                }
-              }}
-              className="pb-4"
-            >
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search sneakers, bags, watches… (Press Enter)"
-                className="w-full bg-[#F5F5F5] border border-[#EAEAEA] px-4 py-2.5 text-[13px] outline-none focus:border-black transition-colors duration-200"
-              />
-            </form>
-          </div>
-        </div>
-      </header>
-
-      {/* MOBILE MENU */}
-      <div
-        className={`fixed inset-0 z-[60] md:hidden transition-opacity duration-300 ${
-          menuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
-        }`}
-      >
-        <div className="absolute inset-0 bg-black/30" onClick={() => setMenuOpen(false)} />
-        <div
-          className={`absolute top-0 left-0 h-full w-[82%] max-w-[340px] bg-white transition-transform duration-300 ease-out ${
-            menuOpen ? "translate-x-0" : "-translate-x-full"
-          }`}
-        >
-          <div className="flex items-center justify-between h-[64px] px-5 border-b border-[#EAEAEA]">
-            <img src={LOGO_BLACK} alt="Wise Sole" className="h-8 w-auto" />
-            <button onClick={() => setMenuOpen(false)} className="p-2" aria-label="Close menu">
-              <MenuIcon className="w-5 h-5" open={true} />
-            </button>
-          </div>
-          <nav className="flex flex-col px-5 pt-6 gap-1">
-            {navLinks.map((l, i) => (
-              <a
-                key={l.label}
-                href={l.href}
-                onClick={() => setMenuOpen(false)}
-                className="text-[15px] py-3.5 border-b border-[#F5F5F5]"
-                style={{
-                  transitionDelay: `${i * 40}ms`,
-                }}
-              >
-                {l.label}
-              </a>
-            ))}
-          </nav>
-          <div className="px-5 pt-6">
-            <a
-              href={waLink("Hi Wise Sole! I'd like to know more about your collection.")}
-              target="_blank"
-              rel="noreferrer"
-              className="block text-center text-[11px] tracking-[0.12em] uppercase bg-black text-white py-3.5"
-            >
-              Inquire Now
-            </a>
-          </div>
-        </div>
-      </div>
+      <SiteHeader />
 
       {/* HERO */}
      <section className="relative">

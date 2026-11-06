@@ -4,6 +4,12 @@ import SiteHeader from "../components/SiteHeader";
 import { validateVoucher, createOrder, getPaymentSettings } from "../services/orderApi";
 import type { PaymentSettings } from "../types/order";
 
+// Courier logos
+import jtLogo from "../assets/courier-jt.png";
+import flashLogo from "../assets/courier-flash.jpg";
+import lbcLogo from "../assets/courier-lbc.png";
+import lalamoveLogo from "../assets/courier-lalamove.jpg";
+
 function peso(val: number) {
   return "\u20B1" + Math.round(val).toLocaleString("en-PH");
 }
@@ -27,77 +33,44 @@ async function fetchPsgc(url: string): Promise<PsgcItem[]> {
   }
 }
 
-// ─── Courier config ──────────────────────────────────────────────────────────
+// ─── Courier config with official logos ──────────────────────────────────────
 interface CourierInfo {
   name: string;
   shortLabel: string;
-  color: string;
-  bg: string;
-  border: string;
-  icon: React.ReactNode;
+  eta: string;
+  logo: string;
 }
 
 const COURIERS: CourierInfo[] = [
   {
     name: "J&T Express",
-    shortLabel: "J&T",
-    color: "#E8373C",
-    bg: "bg-red-50",
-    border: "border-red-400",
-    icon: (
-      <svg viewBox="0 0 32 32" className="w-7 h-7" fill="none">
-        <circle cx="16" cy="16" r="14" fill="#E8373C" />
-        <text x="16" y="20" textAnchor="middle" fill="#fff" fontSize="11" fontWeight="800" fontFamily="Arial">J&amp;T</text>
-      </svg>
-    ),
+    shortLabel: "J&T Express",
+    eta: "2-4 Business Days",
+    logo: jtLogo,
   },
   {
     name: "Flash Express",
-    shortLabel: "Flash",
-    color: "#F7941D",
-    bg: "bg-amber-50",
-    border: "border-amber-400",
-    icon: (
-      <svg viewBox="0 0 32 32" className="w-7 h-7" fill="none">
-        <circle cx="16" cy="16" r="14" fill="#F7941D" />
-        <path d="M18 6L12 18h4l-2 8 8-12h-4l2-8z" fill="#fff" />
-      </svg>
-    ),
+    shortLabel: "Flash Express",
+    eta: "2-4 Business Days",
+    logo: flashLogo,
   },
   {
     name: "LBC Express",
-    shortLabel: "LBC",
-    color: "#C8102E",
-    bg: "bg-red-50",
-    border: "border-red-400",
-    icon: (
-      <svg viewBox="0 0 32 32" className="w-7 h-7" fill="none">
-        <circle cx="16" cy="16" r="14" fill="#C8102E" />
-        <text x="16" y="20" textAnchor="middle" fill="#fff" fontSize="10" fontWeight="800" fontFamily="Arial">LBC</text>
-      </svg>
-    ),
+    shortLabel: "LBC Express",
+    eta: "3-5 Business Days",
+    logo: lbcLogo,
   },
   {
     name: "Lalamove",
-    shortLabel: "Lalamove",
-    color: "#EB6F07",
-    bg: "bg-orange-50",
-    border: "border-orange-400",
-    icon: (
-      <svg viewBox="0 0 32 32" className="w-7 h-7" fill="none">
-        <circle cx="16" cy="16" r="14" fill="#EB6F07" />
-        <path d="M10 21h12M10 21l2-8h8l2 8M14 13V9h4v4" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-        <circle cx="13" cy="23" r="1.5" fill="#fff" />
-        <circle cx="19" cy="23" r="1.5" fill="#fff" />
-      </svg>
-    ),
+    shortLabel: "Lalamove (Same/Next Day)",
+    eta: "Same-Day / Next-Day Booking",
+    logo: lalamoveLogo,
   },
 ];
 
 // Provinces where Lalamove is available
 const LALAMOVE_PROVINCES = ["Metro Manila (NCR)", "Bulacan"];
 
-// ─── Component ───────────────────────────────────────────────────────────────
 export default function Checkout() {
   const { items, subtotal, clearCart } = useCart();
 
@@ -127,6 +100,9 @@ export default function Checkout() {
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
 
+  // QR Modal zoom
+  const [zoomQr, setZoomQr] = useState<string | null>(null);
+
   // Voucher states
   const [voucherInput, setVoucherInput] = useState("");
   const [appliedVoucher, setAppliedVoucher] = useState<{
@@ -145,7 +121,7 @@ export default function Checkout() {
     maribank_number: "09692891708",
     maribank_name: "Ezekiel Dayao",
     maribank_qr_url: "https://res.cloudinary.com/xrsfekgk/image/upload/v1793934905/site/s6vb8vawxl8pm0c0v53l.jpg",
-    shipping_note: "Standard delivery: 2-4 days Metro Manila, 4-7 days Provincial.",
+    shipping_note: "Standard delivery: 2-4 days Metro Manila/Bulacan, 4-7 days Provincial.",
   });
 
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -162,9 +138,7 @@ export default function Checkout() {
   // ─── Load provinces on mount ───────────────────────────────────────────────
   useEffect(() => {
     (async () => {
-      // Fetch all regular provinces
       const allProvinces = await fetchPsgc(`${PSGC}/provinces`);
-      // Add Metro Manila (NCR) as a pseudo-province at the top
       const ncrItem: PsgcItem = { code: "NCR", name: "Metro Manila (NCR)" };
       setProvinces([ncrItem, ...allProvinces]);
     })();
@@ -180,7 +154,6 @@ export default function Checkout() {
     setCities([]);
     setBarangays([]);
 
-    // If Lalamove is currently selected and the new province doesn't support it, switch courier
     if (courierName === "Lalamove" && !LALAMOVE_PROVINCES.includes(name)) {
       setCourierName("J&T Express");
     }
@@ -190,7 +163,6 @@ export default function Checkout() {
     setLoadingCities(true);
     let fetched: PsgcItem[] = [];
     if (code === "NCR") {
-      // NCR region code = 130000000
       fetched = await fetchPsgc(`${PSGC}/regions/130000000/cities-municipalities`);
     } else {
       fetched = await fetchPsgc(`${PSGC}/provinces/${code}/cities-municipalities`);
@@ -220,10 +192,31 @@ export default function Checkout() {
     .filter(Boolean)
     .join(", ");
 
+  const activeQrUrl =
+    paymentMethod === "gcash" ? paymentSettings.gcash_qr_url : paymentSettings.maribank_qr_url;
+
   const handleCopy = (text: string, key: string) => {
     navigator.clipboard.writeText(text);
     setCopiedKey(key);
     setTimeout(() => setCopiedKey(null), 2000);
+  };
+
+  const handleDownloadQr = async () => {
+    if (!activeQrUrl) return;
+    try {
+      const response = await fetch(activeQrUrl);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = `wise-sole-${paymentMethod}-qr.jpg`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      window.open(activeQrUrl, "_blank");
+    }
   };
 
   const handleApplyVoucher = async (e: React.FormEvent) => {
@@ -264,8 +257,10 @@ export default function Checkout() {
   };
 
   const discountAmount = appliedVoucher ? appliedVoucher.discountAmount : 0;
-  const shippingFee = 0; // Free shipping promo by default
+  const shippingFee = 0; // Free shipping promo
   const grandTotal = Math.max(0, subtotal - discountAmount + shippingFee);
+
+  const selectedCourierInfo = COURIERS.find((c) => c.name === courierName) || COURIERS[0];
 
   const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -312,7 +307,6 @@ export default function Checkout() {
       if (paymentReference.trim()) formData.append("payment_reference", paymentReference.trim());
       if (appliedVoucher) formData.append("voucher_code", appliedVoucher.code);
 
-      // JSON encoded items for backend transaction
       const itemsPayload = items.map((item) => ({
         product_id: item.productId,
         product_name: item.name,
@@ -329,10 +323,8 @@ export default function Checkout() {
 
       const createdOrder = await createOrder(formData);
 
-      // Clear the local cart
       clearCart();
 
-      // Redirect to Order Tracking / Confirmation page
       window.location.href = `/track?order=${encodeURIComponent(createdOrder.order_number)}&placed=true`;
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "Failed to place order. Please try again.");
@@ -340,11 +332,9 @@ export default function Checkout() {
     }
   };
 
-  // ─── Select styles ─────────────────────────────────────────────────────────
   const selectCls =
     "w-full bg-[#F5F5F5] border border-[#EAEAEA] px-4 py-3 text-[14px] outline-none focus:border-black transition-colors appearance-none cursor-pointer";
 
-  // ─── Empty bag ─────────────────────────────────────────────────────────────
   if (items.length === 0) {
     return (
       <div className="min-h-screen bg-white">
@@ -564,12 +554,21 @@ export default function Checkout() {
                   />
                 </div>
 
-                {/* ─── Courier Preference with branded buttons ─── */}
+                {/* ─── Courier Preference with official logos ─── */}
                 <div className="md:col-span-2">
-                  <label className="block text-[11px] tracking-[0.08em] uppercase text-[#6B6B6B] mb-1.5">
-                    Courier Preference
-                  </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-[11px] tracking-[0.08em] uppercase text-[#6B6B6B]">
+                      Courier Preference
+                    </label>
+                    <span className="text-[11px] text-[#2e7d32] font-medium flex items-center gap-1">
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                      Est. {selectedCourierInfo.eta}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     {COURIERS.map((c) => {
                       const isDisabled = c.name === "Lalamove" && !isLalamoveAvailable;
                       const isSelected = courierName === c.name;
@@ -579,35 +578,37 @@ export default function Checkout() {
                           type="button"
                           disabled={isDisabled}
                           onClick={() => setCourierName(c.name)}
-                          className={`relative py-3 px-3 border text-center transition-all flex flex-col items-center gap-1.5 ${
+                          className={`relative p-3 border text-center transition-all flex flex-col items-center justify-center gap-2 rounded-none ${
                             isDisabled
-                              ? "border-[#EAEAEA] bg-[#F5F5F5] text-[#BBB] cursor-not-allowed opacity-60"
+                              ? "border-[#EAEAEA] bg-[#F5F5F5] opacity-50 cursor-not-allowed"
                               : isSelected
-                              ? `${c.border} ${c.bg} font-semibold shadow-sm`
-                              : "border-[#EAEAEA] bg-[#F9F9F9] text-black hover:border-black/50"
+                              ? "border-black bg-black text-white shadow-md ring-1 ring-black"
+                              : "border-[#EAEAEA] bg-white text-black hover:border-black/50"
                           }`}
                           title={isDisabled ? "Lalamove is only available for Metro Manila (NCR) & Bulacan" : c.name}
                         >
-                          {c.icon}
-                          <span className="text-[11px] font-medium tracking-wide">{c.shortLabel}</span>
-                          {isSelected && (
-                            <span
-                              className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full"
-                              style={{ backgroundColor: c.color }}
-                            />
-                          )}
+                          <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center bg-white p-1 border border-[#EAEAEA]">
+                            <img src={c.logo} alt={c.name} className="w-full h-full object-contain" />
+                          </div>
+                          <span className={`text-[11px] font-semibold tracking-wide ${isSelected ? "text-white" : "text-black"}`}>
+                            {c.shortLabel}
+                          </span>
+                          <span className={`text-[9px] uppercase tracking-wider ${isSelected ? "text-white/80" : "text-[#888]"}`}>
+                            {c.eta}
+                          </span>
                         </button>
                       );
                     })}
                   </div>
+
                   {courierName === "Lalamove" && (
-                    <p className="text-[11px] text-amber-700 mt-2 flex items-center gap-1">
+                    <p className="text-[11px] text-amber-700 mt-2.5 flex items-center gap-1 bg-amber-50 p-2.5 border border-amber-200">
                       <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                         <circle cx="12" cy="12" r="10" />
                         <line x1="12" y1="8" x2="12" y2="12" />
                         <line x1="12" y1="16" x2="12.01" y2="16" />
                       </svg>
-                      Lalamove is available for Bulacan &amp; Metro Manila / Quezon City area only.
+                      Lalamove is currently supported for Bulacan and Metro Manila / Quezon City deliveries only.
                     </p>
                   )}
                   <p className="text-[11px] text-[#888] mt-2">
@@ -655,32 +656,56 @@ export default function Checkout() {
                 </button>
               </div>
 
-              {/* Payment Details Box */}
-              <div className="p-5 md:p-6 bg-[#F9F9F9] border border-[#EAEAEA] mb-6">
-                <div className="flex flex-col md:flex-row gap-6 items-start">
-                  {/* QR Code if exists */}
-                  {(paymentMethod === "gcash" ? paymentSettings.gcash_qr_url : paymentSettings.maribank_qr_url) && (
-                    <div className="w-36 h-36 bg-white p-2 border border-[#EAEAEA] shrink-0 mx-auto md:mx-0">
-                      <img
-                        src={paymentMethod === "gcash" ? paymentSettings.gcash_qr_url! : paymentSettings.maribank_qr_url!}
-                        alt={`${paymentMethod} QR`}
-                        className="w-full h-full object-contain"
-                      />
+              {/* Payment Details Box with Large Visible QR */}
+              <div className="p-6 md:p-8 bg-[#F9F9F9] border border-[#EAEAEA] mb-6">
+                <div className="flex flex-col md:flex-row gap-6 md:gap-8 items-center md:items-start">
+                  {/* Large Scannable QR Code */}
+                  {activeQrUrl && (
+                    <div className="flex flex-col items-center gap-2.5 shrink-0">
+                      <div
+                        onClick={() => setZoomQr(activeQrUrl)}
+                        className="group relative w-56 h-56 sm:w-60 sm:h-60 bg-white p-3 border-2 border-[#EAEAEA] shadow-md cursor-pointer hover:border-black transition-all"
+                        title="Click to view full screen"
+                      >
+                        <img
+                          src={activeQrUrl}
+                          alt={`${paymentMethod} QR Code`}
+                          className="w-full h-full object-contain"
+                        />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-[11px] font-semibold tracking-wider uppercase">
+                          Click to Enlarge
+                        </div>
+                      </div>
+
+                      {/* 1-CLICK SAVE QR TO PHOTOS FOR MOBILE SHOPPERS */}
+                      <button
+                        type="button"
+                        onClick={handleDownloadQr}
+                        className="w-full py-2 px-3 bg-white border border-[#DDD] hover:border-black text-[11px] font-medium uppercase tracking-wider text-black flex items-center justify-center gap-1.5 transition-colors shadow-xs"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        <span>Save QR to Photos</span>
+                      </button>
+                      <span className="text-[10px] text-[#888] text-center">
+                        Upload to {paymentMethod === "gcash" ? "GCash" : "MariBank"} via Scan from Gallery
+                      </span>
                     </div>
                   )}
 
-                  <div className="flex-1 space-y-3 w-full">
+                  <div className="flex-1 space-y-4 w-full">
                     <div>
                       <p className="text-[10px] tracking-[0.1em] uppercase text-[#888]">Account Name</p>
-                      <p className="text-[15px] font-semibold text-black">
+                      <p className="text-[16px] font-bold text-black tracking-tight">
                         {paymentMethod === "gcash" ? paymentSettings.gcash_name : paymentSettings.maribank_name}
                       </p>
                     </div>
 
                     <div>
                       <p className="text-[10px] tracking-[0.1em] uppercase text-[#888]">Account Number</p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-[17px] font-mono font-bold tracking-wider text-black">
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[20px] font-mono font-bold tracking-wider text-black">
                           {paymentMethod === "gcash" ? paymentSettings.gcash_number : paymentSettings.maribank_number}
                         </span>
                         <button
@@ -693,17 +718,19 @@ export default function Checkout() {
                               paymentMethod
                             )
                           }
-                          className="text-[11px] uppercase tracking-wider bg-white border border-[#DDD] px-2.5 py-1 text-black hover:border-black transition-colors"
+                          className="text-[11px] uppercase tracking-wider bg-white border border-[#DDD] px-3 py-1.5 text-black hover:border-black transition-colors font-medium"
                         >
-                          {copiedKey === paymentMethod ? "Copied!" : "Copy"}
+                          {copiedKey === paymentMethod ? "Copied!" : "Copy Number"}
                         </button>
                       </div>
                     </div>
 
-                    <div className="pt-2 border-t border-[#EAEAEA]">
+                    <div className="pt-3 border-t border-[#EAEAEA] space-y-1.5">
+                      <p className="text-[12px] text-black font-semibold">
+                        Exact Amount to Send: <span className="text-[15px] underline">{peso(grandTotal)}</span>
+                      </p>
                       <p className="text-[11px] text-[#6B6B6B] leading-relaxed">
-                        Send the exact amount of <span className="font-bold text-black">{peso(grandTotal)}</span> via{" "}
-                        {paymentMethod === "gcash" ? "GCash" : "MariBank"}, then upload the screenshot below.
+                        Scan the QR code or send to the number above, then enter the Reference Number and upload your payment screenshot below.
                       </p>
                     </div>
                   </div>
@@ -777,7 +804,7 @@ export default function Checkout() {
                 type="button"
                 disabled={submitting}
                 onClick={handleSubmitOrder}
-                className="w-full bg-black text-white text-[13px] tracking-[0.15em] uppercase py-4 hover:bg-[#1a1a1a] transition-colors duration-200 disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full bg-black text-white text-[13px] tracking-[0.15em] uppercase py-4 hover:bg-[#1a1a1a] transition-colors duration-200 disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg"
               >
                 {submitting ? (
                   <>
@@ -792,16 +819,22 @@ export default function Checkout() {
                 )}
               </button>
               <p className="text-[11px] text-center text-[#888] mt-3">
-                By placing this order, your reservation will be verified and prepared for dispatch.
+                By placing this order, your reservation is secured and will be prepared for dispatch.
               </p>
             </div>
           </div>
 
           {/* RIGHT: ORDER SUMMARY (STICKY) */}
           <div className="lg:col-span-5 sticky top-28 bg-[#FAFAFA] border border-[#EAEAEA] p-6 space-y-6">
-            <h2 className="text-[14px] font-semibold tracking-[0.08em] uppercase border-b border-[#EAEAEA] pb-3">
-              Order Summary ({items.length})
-            </h2>
+            <div className="flex items-center justify-between border-b border-[#EAEAEA] pb-3">
+              <h2 className="text-[14px] font-semibold tracking-[0.08em] uppercase">
+                Order Summary ({items.length})
+              </h2>
+              {/* URGENCY BADGE */}
+              <span className="text-[10px] font-semibold tracking-wider uppercase text-amber-700 bg-amber-50 px-2.5 py-1 border border-amber-200">
+                Only 1 Pair Left in Each Size
+              </span>
+            </div>
 
             {/* Items list */}
             <div className="space-y-4 max-h-[300px] overflow-y-auto pr-1 divide-y divide-[#EAEAEA]">
@@ -882,7 +915,7 @@ export default function Checkout() {
               )}
 
               <div className="flex justify-between text-[#6B6B6B]">
-                <span>Shipping</span>
+                <span>Shipping ({selectedCourierInfo.shortLabel})</span>
                 <span className="text-black font-medium">
                   {shippingFee === 0 ? "FREE" : peso(shippingFee)}
                 </span>
@@ -900,11 +933,42 @@ export default function Checkout() {
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                 <polyline points="9 12 11 14 15 10" />
               </svg>
-              <span>100% Authentic Guaranteed. Direct delivery via reputable couriers.</span>
+              <span>100% Authentic Guaranteed. Direct delivery via accredited courier with real-time tracking.</span>
             </div>
           </div>
         </div>
       </main>
+
+      {/* MODAL FOR QR FULLSCREEN ZOOM */}
+      {zoomQr && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/85 flex items-center justify-center p-4 cursor-pointer"
+          onClick={() => setZoomQr(null)}
+        >
+          <div className="bg-white p-4 max-w-sm w-full text-center" onClick={(e) => e.stopPropagation()}>
+            <p className="text-[12px] font-semibold uppercase tracking-wider mb-2">
+              Scan {paymentMethod === "gcash" ? "GCash" : "MariBank"} QR
+            </p>
+            <img src={zoomQr} alt="Zoomed QR" className="w-full h-auto object-contain mx-auto border" />
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                onClick={handleDownloadQr}
+                className="flex-1 py-2 bg-black text-white text-[11px] uppercase tracking-wider"
+              >
+                Save Image
+              </button>
+              <button
+                type="button"
+                onClick={() => setZoomQr(null)}
+                className="px-4 py-2 border text-[11px] uppercase tracking-wider"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

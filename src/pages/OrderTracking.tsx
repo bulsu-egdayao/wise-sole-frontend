@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import SiteHeader from "../components/SiteHeader";
 import { trackOrder } from "../services/orderApi";
 import type { Order } from "../types/order";
@@ -122,7 +122,27 @@ export default function OrderTracking() {
             <div className="p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#FAFAFA]">
               <div>
                 <span className="text-[10px] tracking-[0.15em] uppercase text-[#888]">Order Number</span>
-                <p className="text-[20px] font-mono font-bold tracking-wider text-black">{order.order_number}</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <p className="text-[20px] font-mono font-bold tracking-wider text-black">{order.order_number}</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(order.order_number);
+                      alert("Order number copied!");
+                    }}
+                    className="text-[10px] tracking-wider uppercase border border-[#DDD] bg-white px-2.5 py-1 text-black hover:border-black"
+                  >
+                    Copy #
+                  </button>
+                  <a
+                    href={`https://wa.me/639692891708?text=${encodeURIComponent(`Hi Wise Sole! Checking on my order ${order.order_number}`)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[10px] tracking-wider uppercase bg-[#25D366] text-white px-2.5 py-1 hover:bg-[#20bd5a]"
+                  >
+                    WhatsApp Support
+                  </a>
+                </div>
                 <p className="text-[12px] text-[#6B6B6B] mt-0.5">
                   Placed on {new Date(order.created_at).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                 </p>

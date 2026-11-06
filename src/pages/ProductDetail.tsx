@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import type { Product } from "../types/product";
 import { getProductBySlug, getRelatedProducts } from "../services/productDetail";
 import { submitInquiry } from "../services/inquiries";
@@ -388,20 +388,23 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
               <span>{!product.is_available ? "Sold Out" : "Add to Shopping Bag"}</span>
             </button>
 
-            <a
-              href={needsSizeSelection ? undefined : waLink}
-              target="_blank"
-              rel="noreferrer"
-              onClick={(e) => {
-                if (needsSizeSelection) {
-                  e.preventDefault();
-                  alert("Please select a size first.");
-                }
-              }}
-              className="block text-center text-[11px] tracking-[0.12em] uppercase py-3 mb-3 border border-black text-black hover:bg-black hover:text-white transition-colors duration-200"
-            >
-              Inquire via WhatsApp
-            </a>
+            <div className="flex items-center justify-between text-[11px] text-[#6B6B6B] py-2 mb-3 px-1 border-b border-[#F0F0F0]">
+              <span>Have sizing or pre-order questions?</span>
+              <a
+                href={needsSizeSelection ? undefined : waLink}
+                target="_blank"
+                rel="noreferrer"
+                onClick={(e) => {
+                  if (needsSizeSelection) {
+                    e.preventDefault();
+                    alert("Please select a size first.");
+                  }
+                }}
+                className="text-black font-semibold uppercase tracking-wider hover:underline"
+              >
+                Chat on WhatsApp →
+              </a>
+            </div>
 
             {/* ALTERNATIVE INQUIRY & SHARE OPTIONS */}
             <div className="grid grid-cols-2 gap-2.5 mb-3">
