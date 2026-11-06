@@ -3,7 +3,13 @@ import { getToken } from "./auth";
 const API_URL = import.meta.env.VITE_API_URL as string;
 const STORAGE_URL = API_URL.replace(/\/api\/?$/, "");
 
-export type SiteImageKey = "hero_main" | "hero_side_1" | "hero_side_2" | "about_photo";
+export type SiteImageKey =
+  | "hero_main"
+  | "hero_side_1"
+  | "hero_side_2"
+  | "about_photo"
+  | "payment_gcash_qr"
+  | "payment_maribank_qr";
 
 export type SiteImagesMap = Partial<Record<SiteImageKey, string>>;
 

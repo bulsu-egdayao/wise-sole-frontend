@@ -84,10 +84,12 @@ export async function getPaymentSettings(): Promise<PaymentSettings> {
 
   if (!res.ok) {
     return {
-      gcash_number: "09560929925",
-      gcash_name: "Wise Sole",
-      maribank_number: "1234-5678-9012",
-      maribank_name: "Wise Sole",
+      gcash_number: "09692891708",
+      gcash_name: "Ezekiel Dayao",
+      gcash_qr_url: "https://res.cloudinary.com/xrsfekgk/image/upload/v1793934903/site/ksaefvjr0xj3d86forpk.jpg",
+      maribank_number: "09692891708",
+      maribank_name: "Ezekiel Dayao",
+      maribank_qr_url: "https://res.cloudinary.com/xrsfekgk/image/upload/v1793934905/site/s6vb8vawxl8pm0c0v53l.jpg",
       shipping_note: "Standard delivery: 2-4 days Metro Manila, 4-7 days Provincial.",
     };
   }

@@ -1,13 +1,103 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useCart } from "../context/CartContext";
 import SiteHeader from "../components/SiteHeader";
 import { validateVoucher, createOrder, getPaymentSettings } from "../services/orderApi";
 import type { PaymentSettings } from "../types/order";
 
 function peso(val: number) {
-  return "₱" + Math.round(val).toLocaleString("en-PH");
+  return "\u20B1" + Math.round(val).toLocaleString("en-PH");
 }
 
+// ─── PSGC API helpers ────────────────────────────────────────────────────────
+const PSGC = "https://psgc.gitlab.io/api";
+
+interface PsgcItem {
+  code: string;
+  name: string;
+}
+
+async function fetchPsgc(url: string): Promise<PsgcItem[]> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return [];
+    const data: PsgcItem[] = await res.json();
+    return data.sort((a, b) => a.name.localeCompare(b.name));
+  } catch {
+    return [];
+  }
+}
+
+// ─── Courier config ──────────────────────────────────────────────────────────
+interface CourierInfo {
+  name: string;
+  shortLabel: string;
+  color: string;
+  bg: string;
+  border: string;
+  icon: React.ReactNode;
+}
+
+const COURIERS: CourierInfo[] = [
+  {
+    name: "J&T Express",
+    shortLabel: "J&T",
+    color: "#E8373C",
+    bg: "bg-red-50",
+    border: "border-red-400",
+    icon: (
+      <svg viewBox="0 0 32 32" className="w-7 h-7" fill="none">
+        <circle cx="16" cy="16" r="14" fill="#E8373C" />
+        <text x="16" y="20" textAnchor="middle" fill="#fff" fontSize="11" fontWeight="800" fontFamily="Arial">J&amp;T</text>
+      </svg>
+    ),
+  },
+  {
+    name: "Flash Express",
+    shortLabel: "Flash",
+    color: "#F7941D",
+    bg: "bg-amber-50",
+    border: "border-amber-400",
+    icon: (
+      <svg viewBox="0 0 32 32" className="w-7 h-7" fill="none">
+        <circle cx="16" cy="16" r="14" fill="#F7941D" />
+        <path d="M18 6L12 18h4l-2 8 8-12h-4l2-8z" fill="#fff" />
+      </svg>
+    ),
+  },
+  {
+    name: "LBC Express",
+    shortLabel: "LBC",
+    color: "#C8102E",
+    bg: "bg-red-50",
+    border: "border-red-400",
+    icon: (
+      <svg viewBox="0 0 32 32" className="w-7 h-7" fill="none">
+        <circle cx="16" cy="16" r="14" fill="#C8102E" />
+        <text x="16" y="20" textAnchor="middle" fill="#fff" fontSize="10" fontWeight="800" fontFamily="Arial">LBC</text>
+      </svg>
+    ),
+  },
+  {
+    name: "Lalamove",
+    shortLabel: "Lalamove",
+    color: "#EB6F07",
+    bg: "bg-orange-50",
+    border: "border-orange-400",
+    icon: (
+      <svg viewBox="0 0 32 32" className="w-7 h-7" fill="none">
+        <circle cx="16" cy="16" r="14" fill="#EB6F07" />
+        <path d="M10 21h12M10 21l2-8h8l2 8M14 13V9h4v4" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx="13" cy="23" r="1.5" fill="#fff" />
+        <circle cx="19" cy="23" r="1.5" fill="#fff" />
+      </svg>
+    ),
+  },
+];
+
+// Provinces where Lalamove is available
+const LALAMOVE_PROVINCES = ["Metro Manila (NCR)", "Bulacan"];
+
+// ─── Component ───────────────────────────────────────────────────────────────
 export default function Checkout() {
   const { items, subtotal, clearCart } = useCart();
 
@@ -15,11 +105,21 @@ export default function Checkout() {
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
-  const [deliveryAddress, setDeliveryAddress] = useState("");
-  const [deliveryCity, setDeliveryCity] = useState("");
-  const [deliveryProvince, setDeliveryProvince] = useState("");
-  const [deliveryNotes, setDeliveryNotes] = useState("");
+  const [houseStreet, setHouseStreet] = useState("");
   const [courierName, setCourierName] = useState("J&T Express");
+  const [deliveryNotes, setDeliveryNotes] = useState("");
+
+  // Philippine address dropdowns
+  const [provinces, setProvinces] = useState<PsgcItem[]>([]);
+  const [cities, setCities] = useState<PsgcItem[]>([]);
+  const [barangays, setBarangays] = useState<PsgcItem[]>([]);
+  const [selectedProvince, setSelectedProvince] = useState("");
+  const [selectedProvinceCode, setSelectedProvinceCode] = useState("");
+  const [selectedCity, setSelectedCity] = useState("");
+  const [selectedCityCode, setSelectedCityCode] = useState("");
+  const [selectedBarangay, setSelectedBarangay] = useState("");
+  const [loadingCities, setLoadingCities] = useState(false);
+  const [loadingBarangays, setLoadingBarangays] = useState(false);
 
   // Payment method
   const [paymentMethod, setPaymentMethod] = useState<"gcash" | "maribank">("gcash");
@@ -39,10 +139,12 @@ export default function Checkout() {
 
   // Payment settings from backend
   const [paymentSettings, setPaymentSettings] = useState<PaymentSettings>({
-    gcash_number: "09560929925",
-    gcash_name: "Wise Sole",
-    maribank_number: "1234-5678-9012",
-    maribank_name: "Wise Sole",
+    gcash_number: "09692891708",
+    gcash_name: "Ezekiel Dayao",
+    gcash_qr_url: "https://res.cloudinary.com/xrsfekgk/image/upload/v1793934903/site/ksaefvjr0xj3d86forpk.jpg",
+    maribank_number: "09692891708",
+    maribank_name: "Ezekiel Dayao",
+    maribank_qr_url: "https://res.cloudinary.com/xrsfekgk/image/upload/v1793934905/site/s6vb8vawxl8pm0c0v53l.jpg",
     shipping_note: "Standard delivery: 2-4 days Metro Manila, 4-7 days Provincial.",
   });
 
@@ -50,11 +152,73 @@ export default function Checkout() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  // ─── Load payment settings ─────────────────────────────────────────────────
   useEffect(() => {
     getPaymentSettings()
       .then(setPaymentSettings)
       .catch((e) => console.warn("Using default payment settings:", e));
   }, []);
+
+  // ─── Load provinces on mount ───────────────────────────────────────────────
+  useEffect(() => {
+    (async () => {
+      // Fetch all regular provinces
+      const allProvinces = await fetchPsgc(`${PSGC}/provinces`);
+      // Add Metro Manila (NCR) as a pseudo-province at the top
+      const ncrItem: PsgcItem = { code: "NCR", name: "Metro Manila (NCR)" };
+      setProvinces([ncrItem, ...allProvinces]);
+    })();
+  }, []);
+
+  // ─── Load cities when province changes ─────────────────────────────────────
+  const handleProvinceChange = useCallback(async (code: string, name: string) => {
+    setSelectedProvince(name);
+    setSelectedProvinceCode(code);
+    setSelectedCity("");
+    setSelectedCityCode("");
+    setSelectedBarangay("");
+    setCities([]);
+    setBarangays([]);
+
+    // If Lalamove is currently selected and the new province doesn't support it, switch courier
+    if (courierName === "Lalamove" && !LALAMOVE_PROVINCES.includes(name)) {
+      setCourierName("J&T Express");
+    }
+
+    if (!code) return;
+
+    setLoadingCities(true);
+    let fetched: PsgcItem[] = [];
+    if (code === "NCR") {
+      // NCR region code = 130000000
+      fetched = await fetchPsgc(`${PSGC}/regions/130000000/cities-municipalities`);
+    } else {
+      fetched = await fetchPsgc(`${PSGC}/provinces/${code}/cities-municipalities`);
+    }
+    setCities(fetched);
+    setLoadingCities(false);
+  }, [courierName]);
+
+  // ─── Load barangays when city changes ──────────────────────────────────────
+  const handleCityChange = useCallback(async (code: string, name: string) => {
+    setSelectedCity(name);
+    setSelectedCityCode(code);
+    setSelectedBarangay("");
+    setBarangays([]);
+
+    if (!code) return;
+
+    setLoadingBarangays(true);
+    const fetched = await fetchPsgc(`${PSGC}/cities-municipalities/${code}/barangays`);
+    setBarangays(fetched);
+    setLoadingBarangays(false);
+  }, []);
+
+  // ─── Derived ───────────────────────────────────────────────────────────────
+  const isLalamoveAvailable = LALAMOVE_PROVINCES.includes(selectedProvince);
+  const deliveryAddress = [houseStreet, selectedBarangay, selectedCity, selectedProvince]
+    .filter(Boolean)
+    .join(", ");
 
   const handleCopy = (text: string, key: string) => {
     navigator.clipboard.writeText(text);
@@ -112,8 +276,18 @@ export default function Checkout() {
       return;
     }
 
-    if (!customerName.trim() || !customerPhone.trim() || !deliveryAddress.trim()) {
-      setSubmitError("Please fill in your name, contact number, and delivery address.");
+    if (!customerName.trim() || !customerPhone.trim()) {
+      setSubmitError("Please fill in your name and contact number.");
+      return;
+    }
+
+    if (!selectedProvince || !selectedCity) {
+      setSubmitError("Please select your Province and City/Municipality.");
+      return;
+    }
+
+    if (!houseStreet.trim()) {
+      setSubmitError("Please enter your House/Street address.");
       return;
     }
 
@@ -129,9 +303,9 @@ export default function Checkout() {
       formData.append("customer_name", customerName.trim());
       formData.append("customer_phone", customerPhone.trim());
       if (customerEmail.trim()) formData.append("customer_email", customerEmail.trim());
-      formData.append("delivery_address", deliveryAddress.trim());
-      if (deliveryCity.trim()) formData.append("delivery_city", deliveryCity.trim());
-      if (deliveryProvince.trim()) formData.append("delivery_province", deliveryProvince.trim());
+      formData.append("delivery_address", deliveryAddress);
+      formData.append("delivery_city", selectedCity);
+      formData.append("delivery_province", selectedProvince);
       if (deliveryNotes.trim()) formData.append("delivery_notes", deliveryNotes.trim());
       formData.append("courier_name", courierName);
       formData.append("payment_method", paymentMethod);
@@ -166,6 +340,11 @@ export default function Checkout() {
     }
   };
 
+  // ─── Select styles ─────────────────────────────────────────────────────────
+  const selectCls =
+    "w-full bg-[#F5F5F5] border border-[#EAEAEA] px-4 py-3 text-[14px] outline-none focus:border-black transition-colors appearance-none cursor-pointer";
+
+  // ─── Empty bag ─────────────────────────────────────────────────────────────
   if (items.length === 0) {
     return (
       <div className="min-h-screen bg-white">
@@ -266,66 +445,171 @@ export default function Checkout() {
                   />
                 </div>
 
+                {/* ─── Province Dropdown ─── */}
+                <div>
+                  <label className="block text-[11px] tracking-[0.08em] uppercase text-[#6B6B6B] mb-1.5">
+                    Province / Region <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={selectedProvinceCode}
+                      onChange={(e) => {
+                        const opt = provinces.find((p) => p.code === e.target.value);
+                        handleProvinceChange(e.target.value, opt?.name || "");
+                      }}
+                      className={selectCls}
+                    >
+                      <option value="">Select Province</option>
+                      {provinces.map((p) => (
+                        <option key={p.code} value={p.code}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                      <svg className="w-4 h-4 text-[#888]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path d="M6 9l6 6 6-6" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ─── City / Municipality Dropdown ─── */}
+                <div>
+                  <label className="block text-[11px] tracking-[0.08em] uppercase text-[#6B6B6B] mb-1.5">
+                    City / Municipality <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={selectedCityCode}
+                      onChange={(e) => {
+                        const opt = cities.find((c) => c.code === e.target.value);
+                        handleCityChange(e.target.value, opt?.name || "");
+                      }}
+                      disabled={!selectedProvinceCode || loadingCities}
+                      className={`${selectCls} disabled:opacity-50`}
+                    >
+                      <option value="">
+                        {loadingCities ? "Loading cities..." : !selectedProvinceCode ? "Select province first" : "Select City"}
+                      </option>
+                      {cities.map((c) => (
+                        <option key={c.code} value={c.code}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                      <svg className="w-4 h-4 text-[#888]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path d="M6 9l6 6 6-6" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ─── Barangay Dropdown ─── */}
+                <div>
+                  <label className="block text-[11px] tracking-[0.08em] uppercase text-[#6B6B6B] mb-1.5">
+                    Barangay
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={selectedBarangay}
+                      onChange={(e) => setSelectedBarangay(e.target.value)}
+                      disabled={!selectedCityCode || loadingBarangays}
+                      className={`${selectCls} disabled:opacity-50`}
+                    >
+                      <option value="">
+                        {loadingBarangays ? "Loading barangays..." : !selectedCityCode ? "Select city first" : "Select Barangay"}
+                      </option>
+                      {barangays.map((b) => (
+                        <option key={b.code} value={b.name}>
+                          {b.name}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                      <svg className="w-4 h-4 text-[#888]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path d="M6 9l6 6 6-6" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ─── House / Street ─── */}
+                <div>
+                  <label className="block text-[11px] tracking-[0.08em] uppercase text-[#6B6B6B] mb-1.5">
+                    House No. / Street <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={houseStreet}
+                    onChange={(e) => setHouseStreet(e.target.value)}
+                    placeholder="e.g. Blk 5 Lot 10, Dahlia St."
+                    className="w-full bg-[#F5F5F5] border border-[#EAEAEA] px-4 py-3 text-[14px] outline-none focus:border-black transition-colors"
+                  />
+                </div>
+
+                {/* ─── Delivery Notes ─── */}
                 <div className="md:col-span-2">
                   <label className="block text-[11px] tracking-[0.08em] uppercase text-[#6B6B6B] mb-1.5">
-                    Street Address / House / Unit / Barangay <span className="text-red-500">*</span>
-                  </label>
-                  <textarea
-                    required
-                    rows={2}
-                    value={deliveryAddress}
-                    onChange={(e) => setDeliveryAddress(e.target.value)}
-                    placeholder="House/Unit #, Street, Barangay"
-                    className="w-full bg-[#F5F5F5] border border-[#EAEAEA] px-4 py-2.5 text-[14px] outline-none focus:border-black transition-colors resize-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[11px] tracking-[0.08em] uppercase text-[#6B6B6B] mb-1.5">
-                    City / Municipality
+                    Delivery Notes <span className="text-[10px] text-[#888] lowercase">(optional)</span>
                   </label>
                   <input
                     type="text"
-                    value={deliveryCity}
-                    onChange={(e) => setDeliveryCity(e.target.value)}
-                    placeholder="e.g. Malolos / Quezon City"
+                    value={deliveryNotes}
+                    onChange={(e) => setDeliveryNotes(e.target.value)}
+                    placeholder="e.g. Gate code: 1234, Landmark: near sari-sari store"
                     className="w-full bg-[#F5F5F5] border border-[#EAEAEA] px-4 py-3 text-[14px] outline-none focus:border-black transition-colors"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-[11px] tracking-[0.08em] uppercase text-[#6B6B6B] mb-1.5">
-                    Province / Region
-                  </label>
-                  <input
-                    type="text"
-                    value={deliveryProvince}
-                    onChange={(e) => setDeliveryProvince(e.target.value)}
-                    placeholder="e.g. Bulacan / Metro Manila"
-                    className="w-full bg-[#F5F5F5] border border-[#EAEAEA] px-4 py-3 text-[14px] outline-none focus:border-black transition-colors"
-                  />
-                </div>
-
+                {/* ─── Courier Preference with branded buttons ─── */}
                 <div className="md:col-span-2">
                   <label className="block text-[11px] tracking-[0.08em] uppercase text-[#6B6B6B] mb-1.5">
                     Courier Preference
                   </label>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                    {["J&T Express", "Flash Express", "LBC Express", "Lalamove"].map((c) => (
-                      <button
-                        key={c}
-                        type="button"
-                        onClick={() => setCourierName(c)}
-                        className={`py-3 px-3 text-[12px] font-medium border text-center transition-all ${
-                          courierName === c
-                            ? "border-black bg-black text-white"
-                            : "border-[#EAEAEA] bg-[#F9F9F9] text-black hover:border-black/50"
-                        }`}
-                      >
-                        {c}
-                      </button>
-                    ))}
+                    {COURIERS.map((c) => {
+                      const isDisabled = c.name === "Lalamove" && !isLalamoveAvailable;
+                      const isSelected = courierName === c.name;
+                      return (
+                        <button
+                          key={c.name}
+                          type="button"
+                          disabled={isDisabled}
+                          onClick={() => setCourierName(c.name)}
+                          className={`relative py-3 px-3 border text-center transition-all flex flex-col items-center gap-1.5 ${
+                            isDisabled
+                              ? "border-[#EAEAEA] bg-[#F5F5F5] text-[#BBB] cursor-not-allowed opacity-60"
+                              : isSelected
+                              ? `${c.border} ${c.bg} font-semibold shadow-sm`
+                              : "border-[#EAEAEA] bg-[#F9F9F9] text-black hover:border-black/50"
+                          }`}
+                          title={isDisabled ? "Lalamove is only available for Metro Manila (NCR) & Bulacan" : c.name}
+                        >
+                          {c.icon}
+                          <span className="text-[11px] font-medium tracking-wide">{c.shortLabel}</span>
+                          {isSelected && (
+                            <span
+                              className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full"
+                              style={{ backgroundColor: c.color }}
+                            />
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
+                  {courierName === "Lalamove" && (
+                    <p className="text-[11px] text-amber-700 mt-2 flex items-center gap-1">
+                      <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="8" x2="12" y2="12" />
+                        <line x1="12" y1="16" x2="12.01" y2="16" />
+                      </svg>
+                      Lalamove is available for Bulacan &amp; Metro Manila / Quezon City area only.
+                    </p>
+                  )}
                   <p className="text-[11px] text-[#888] mt-2">
                     {paymentSettings.shipping_note}
                   </p>
@@ -451,7 +735,7 @@ export default function Checkout() {
                       <img src={receiptPreview} alt="Receipt preview" className="w-16 h-20 object-cover border border-[#DDD]" />
                       <div className="flex-1 min-w-0">
                         <p className="text-[13px] font-medium text-black truncate">{receiptFile?.name}</p>
-                        <p className="text-[11px] text-green-600 mt-0.5">✓ Ready to upload</p>
+                        <p className="text-[11px] text-green-600 mt-0.5">{"\u2713"} Ready to upload</p>
                       </div>
                       <button
                         type="button"
@@ -501,10 +785,10 @@ export default function Checkout() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                     </svg>
-                    <span>Processing Order & Uploading Receipt...</span>
+                    <span>Processing Order &amp; Uploading Receipt...</span>
                   </>
                 ) : (
-                  <span>Place Order • {peso(grandTotal)}</span>
+                  <span>Place Order {"\u2022"} {peso(grandTotal)}</span>
                 )}
               </button>
               <p className="text-[11px] text-center text-[#888] mt-3">

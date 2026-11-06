@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import type { SiteImageKey, SiteImagesMap } from "../services/siteImages";
 import { getSiteImages, uploadSiteImage, deleteSiteImage, siteImageUrl } from "../services/siteImages";
 import { getToken } from "../services/auth";
@@ -14,6 +14,8 @@ const SLOTS: { key: SiteImageKey; label: string; hint: string }[] = [
   { key: "hero_side_1", label: "Hero Side Photo 1", hint: '"New Arrivals — Fall Drop" tile' },
   { key: "hero_side_2", label: "Hero Side Photo 2", hint: '"Accessories, Reconsidered" tile' },
   { key: "about_photo", label: "About Section Photo", hint: "Shown next to the About Wise Sole text" },
+  { key: "payment_gcash_qr", label: "GCash QR Code", hint: "Scannable QR code shown to customers choosing GCash at checkout" },
+  { key: "payment_maribank_qr", label: "MariBank QR Code", hint: "Scannable QR code shown to customers choosing MariBank at checkout" },
 ];
 
 export default function AdminSiteImages({ onBack }: AdminSiteImagesProps) {

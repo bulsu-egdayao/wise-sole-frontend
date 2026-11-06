@@ -25,6 +25,9 @@ export default function AdminOrders({ onBack }: AdminOrdersProps) {
   const [modalStatus, setModalStatus] = useState<OrderStatus>("pending_verification");
   const [modalNotes, setModalNotes] = useState("");
   const [previewReceipt, setPreviewReceipt] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const loadOrders = async () => {
     setLoading(true);
@@ -43,6 +46,13 @@ export default function AdminOrders({ onBack }: AdminOrdersProps) {
   useEffect(() => {
     loadOrders();
   }, [page, statusFilter]);
+
+  useEffect(() => {
+    if (toast) {
+      const t = setTimeout(() => setToast(null), 3500);
+      return () => clearTimeout(t);
+    }
+  }, [toast]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,27 +81,47 @@ export default function AdminOrders({ onBack }: AdminOrdersProps) {
 
       setOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
       setSelectedOrder(updated);
-      alert("Order updated successfully!");
+      setToast({ type: "success", message: "Order updated successfully!" });
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to update order");
+      setToast({ type: "error", message: err instanceof Error ? err.message : "Failed to update order" });
     } finally {
       setUpdating(false);
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!window.confirm("Are you sure you want to delete this order?")) return;
+  const handleDeleteClick = (id: number) => {
+    setConfirmDelete(id);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (confirmDelete === null) return;
+    setDeleting(true);
     try {
-      await deleteOrder(id);
-      setOrders((prev) => prev.filter((o) => o.id !== id));
-      if (selectedOrder?.id === id) setSelectedOrder(null);
+      await deleteOrder(confirmDelete);
+      setOrders((prev) => prev.filter((o) => o.id !== confirmDelete));
+      if (selectedOrder?.id === confirmDelete) setSelectedOrder(null);
+      setToast({ type: "success", message: "Order deleted successfully." });
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to delete order");
+      setToast({ type: "error", message: err instanceof Error ? err.message : "Failed to delete order" });
+    } finally {
+      setDeleting(false);
+      setConfirmDelete(null);
     }
   };
 
   return (
     <div className="min-h-screen bg-[#F5F5F5]" style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" }}>
+      {/* TOAST NOTIFICATION */}
+      {toast && (
+        <div className={`fixed top-6 right-6 z-[80] max-w-sm px-5 py-3.5 shadow-lg border flex items-center gap-3 animate-in ${
+          toast.type === "success"
+            ? "bg-white border-green-200 text-green-900"
+            : "bg-white border-red-200 text-red-900"
+        }`}>
+          <span className="text-[13px]">{toast.message}</span>
+          <button onClick={() => setToast(null)} className="ml-auto text-[#888] hover:text-black text-lg leading-none">&times;</button>
+        </div>
+      )}
       {/* HEADER */}
       <header className="bg-white border-b border-[#EAEAEA] sticky top-0 z-20">
         <div className="max-w-[1400px] mx-auto px-6 h-16 flex items-center justify-between">
@@ -465,7 +495,7 @@ export default function AdminOrders({ onBack }: AdminOrdersProps) {
             <div className="p-4 border-t border-[#EAEAEA] bg-[#FAFAFA] flex items-center justify-between sticky bottom-0">
               <button
                 type="button"
-                onClick={() => handleDelete(selectedOrder.id)}
+                onClick={() => setConfirmDelete(selectedOrder.id)}
                 className="text-red-600 text-[11px] uppercase tracking-wider hover:underline"
               >
                 Delete Order
@@ -501,6 +531,34 @@ export default function AdminOrders({ onBack }: AdminOrdersProps) {
         >
           <div className="max-w-xl max-h-[90vh] bg-white p-2">
             <img src={previewReceipt} alt="Receipt Full" className="max-w-full max-h-[85vh] object-contain" />
+          </div>
+        </div>
+      )}
+
+      {/* CONFIRM DELETE MODAL */}
+      {confirmDelete !== null && (
+        <div className="fixed inset-0 z-[70] bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-white max-w-sm w-full p-6 border border-[#EAEAEA] shadow-xl">
+            <h3 className="text-[16px] font-semibold tracking-tight mb-2">Delete Order</h3>
+            <p className="text-[13px] text-[#6B6B6B] mb-6">
+              Are you sure you want to permanently delete this order? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setConfirmDelete(null)}
+                disabled={deleting}
+                className="px-4 py-2 border border-[#EAEAEA] text-[11px] uppercase tracking-wider hover:bg-[#F5F5F5] disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                disabled={deleting}
+                className="px-5 py-2 bg-red-600 text-white text-[11px] uppercase tracking-wider hover:bg-red-700 disabled:opacity-50"
+              >
+                {deleting ? "Deleting..." : "Delete Order"}
+              </button>
+            </div>
           </div>
         </div>
       )}
