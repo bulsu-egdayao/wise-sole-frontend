@@ -88,6 +88,19 @@ export default function Shop() {
     return () => clearTimeout(t);
   }, [searchInput]);
 
+  useEffect(() => {
+    const handlePopState = () => {
+      const p = new URLSearchParams(window.location.search);
+      const q = p.get("search") || "";
+      if (q !== searchInput) {
+        setSearchInput(q);
+        setDebouncedSearch(q);
+      }
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [searchInput]);
+
   const [debouncedMinPrice, setDebouncedMinPrice] = useState(minPrice);
   const [debouncedMaxPrice, setDebouncedMaxPrice] = useState(maxPrice);
   useEffect(() => {
@@ -188,14 +201,27 @@ export default function Shop() {
         <p className="text-[10px] tracking-[0.15em] uppercase text-[#6B6B6B] mb-2">Full Catalog</p>
         <h1 className="text-[26px] md:text-[34px] font-semibold tracking-tight mb-8">Shop</h1>
 
-        <div className="mb-6">
+        <div className="mb-6 max-w-[420px] relative">
           <input
             type="text"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             placeholder="Search sneakers, bags, watches…"
-            className="w-full md:max-w-[420px] bg-[#F5F5F5] border border-[#EAEAEA] px-4 py-3 text-[13px] outline-none focus:border-black transition-colors duration-200"
+            className="w-full bg-[#F5F5F5] border border-[#EAEAEA] pl-4 pr-10 py-3 text-[13px] outline-none focus:border-black transition-colors duration-200"
           />
+          {searchInput && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchInput("");
+                setDebouncedSearch("");
+              }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#888] hover:text-black text-sm p-1"
+              title="Clear search"
+            >
+              ✕
+            </button>
+          )}
         </div>
 
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6 pb-6 border-b border-[#EAEAEA]">
@@ -297,7 +323,26 @@ export default function Shop() {
         ) : error ? (
           <p className="text-[13px] text-red-600">{error}</p>
         ) : products.length === 0 ? (
-          <p className="text-[13px] text-[#6B6B6B]">No products found. Try a different search or category.</p>
+          <div className="py-12 text-center border border-dashed border-[#EAEAEA] bg-[#FAFAFA] p-8 max-w-lg mx-auto my-6">
+            <p className="text-[14px] font-semibold text-black mb-1">No products found</p>
+            <p className="text-[13px] text-[#6B6B6B] mb-5">
+              {debouncedSearch
+                ? `We couldn't find any items matching "${debouncedSearch}". Try checking your spelling or search by brand.`
+                : "No products available in this selection."}
+            </p>
+            {debouncedSearch && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchInput("");
+                  setDebouncedSearch("");
+                }}
+                className="text-[11px] uppercase tracking-wider bg-black text-white px-6 py-3 hover:bg-[#222] transition-colors"
+              >
+                Clear Search &amp; View All
+              </button>
+            )}
+          </div>
         ) : (
           <>
             {shouldGroupByType ? (
