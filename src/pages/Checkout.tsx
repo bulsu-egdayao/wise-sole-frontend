@@ -106,8 +106,8 @@ export default function Checkout() {
   const [loadingCities, setLoadingCities] = useState(false);
   const [loadingBarangays, setLoadingBarangays] = useState(false);
 
-  // Payment method: H&M Accordion (gcash | maribank | cod)
-  const [paymentMethod, setPaymentMethod] = useState<"gcash" | "maribank" | "cod">("gcash");
+  // Payment method: H&M Accordion (gcash | maribank | cod | null) — unselected by default
+  const [paymentMethod, setPaymentMethod] = useState<"gcash" | "maribank" | "cod" | null>(null);
   const [paymentReference, setPaymentReference] = useState("");
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
@@ -299,6 +299,11 @@ export default function Checkout() {
 
     if (!houseStreet.trim()) {
       setSubmitError("Please enter your House/Street address.");
+      return;
+    }
+
+    if (!paymentMethod) {
+      setSubmitError("Please select your preferred Payment Method (GCash, MariBank, or Cash on Delivery).");
       return;
     }
 
@@ -1009,6 +1014,8 @@ export default function Checkout() {
                     </svg>
                     <span>Processing Order...</span>
                   </>
+                ) : !paymentMethod ? (
+                  <span>Select Payment Method to Proceed • {peso(grandTotal)}</span>
                 ) : (
                   <span>
                     Place Order {isCod ? "• Cash on Delivery" : ""} • {peso(grandTotal)}
@@ -1113,10 +1120,10 @@ export default function Checkout() {
 
               <div className="flex justify-between text-[#6B6B6B]">
                 <span>
-                  Shipping {isCod ? "(LBC Express COD)" : "(Prepaid Promo)"}
+                  Shipping {paymentMethod === null ? "(Select payment)" : isCod ? "(LBC Express COD)" : "(Prepaid Promo)"}
                 </span>
                 <span className="text-black font-medium">
-                  {shippingFee === 0 ? "FREE" : peso(shippingFee)}
+                  {paymentMethod === null ? "—" : shippingFee === 0 ? "FREE" : peso(shippingFee)}
                 </span>
               </div>
 
@@ -1144,23 +1151,32 @@ export default function Checkout() {
           className="fixed inset-0 z-[100] bg-black/85 flex items-center justify-center p-4 cursor-pointer"
           onClick={() => setZoomQr(null)}
         >
-          <div className="bg-white p-4 max-w-sm w-full text-center" onClick={(e) => e.stopPropagation()}>
-            <p className="text-[12px] font-semibold uppercase tracking-wider mb-2">
+          <div
+            className="bg-white p-5 max-w-sm w-full text-center max-h-[92vh] flex flex-col items-center shadow-2xl animate-in fade-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-[12px] font-semibold uppercase tracking-wider mb-2 text-black shrink-0">
               Scan {paymentMethod === "gcash" ? "GCash" : "MariBank"} QR
             </p>
-            <img src={zoomQr} alt="Zoomed QR" className="w-full h-auto object-contain mx-auto border" />
-            <div className="mt-3 flex gap-2">
+            <div className="flex-1 min-h-0 w-full flex items-center justify-center p-1 overflow-hidden my-1">
+              <img
+                src={zoomQr}
+                alt="Zoomed QR"
+                className="max-h-[62vh] max-w-full w-auto h-auto object-contain mx-auto border border-[#EAEAEA]"
+              />
+            </div>
+            <div className="mt-3 flex gap-2 w-full shrink-0">
               <button
                 type="button"
                 onClick={handleDownloadQr}
-                className="flex-1 py-2 bg-black text-white text-[11px] uppercase tracking-wider"
+                className="flex-1 py-2.5 bg-black text-white text-[11px] uppercase tracking-wider hover:bg-[#222] transition-colors"
               >
                 Save Image
               </button>
               <button
                 type="button"
                 onClick={() => setZoomQr(null)}
-                className="px-4 py-2 border text-[11px] uppercase tracking-wider"
+                className="px-5 py-2.5 border border-[#DDD] hover:border-black text-[11px] uppercase tracking-wider transition-colors"
               >
                 Close
               </button>

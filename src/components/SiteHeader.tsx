@@ -66,10 +66,9 @@ function MenuIcon({ className, open }: IconProps & { open?: boolean }) {
 const navLinks = [
   { label: "Shop", href: "/shop" },
   { label: "Categories", href: "/#categories" },
-  { label: "About", href: "/#about" },
-  { label: "Legitimacy", href: "/legitimacy" },
-  { label: "My Purchases", href: "/my-orders" },
   { label: "Track Order", href: "/track" },
+  { label: "Legitimacy", href: "/legitimacy" },
+  { label: "About", href: "/#about" },
   { label: "FAQ", href: "/faq" },
   { label: "Contact", href: "/#contact" },
 ];
