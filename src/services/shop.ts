@@ -10,6 +10,7 @@ export interface ShopFilters {
   search?: string;
   sort?: SortOption;
   page?: number;
+  perPage?: number;
   minPrice?: string;
   maxPrice?: string;
   size?: string;
@@ -24,6 +25,7 @@ export async function getShopProducts(filters: ShopFilters): Promise<PaginatedRe
   if (filters.search) params.set("search", filters.search);
   if (filters.sort) params.set("sort", filters.sort);
   if (filters.page) params.set("page", String(filters.page));
+  if (filters.perPage) params.set("per_page", String(filters.perPage));
   if (filters.minPrice) params.set("min_price", filters.minPrice);
   if (filters.maxPrice) params.set("max_price", filters.maxPrice);
   if (filters.size) params.set("size", filters.size);

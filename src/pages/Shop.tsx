@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import type { Product, Category } from "../types/product";
 import { getShopProducts, getShopCategories, getAvailableSizes } from "../services/shop";
 import type { SortOption } from "../services/shop";
@@ -115,6 +115,9 @@ export default function Shop() {
     setCurrentPage(1);
   }, [activeCategory, debouncedSearch, sort, debouncedMinPrice, debouncedMaxPrice, selectedSize, onSale, inStock, selectedTypeSlug]);
 
+  const isSneakerCatalog = !activeCategory || activeCategory === "sneakers";
+  const wantsGrouped = !debouncedSearch && !selectedTypeSlug && isSneakerCatalog;
+
   const loadProducts = useCallback((page: number) => {
     setLoading(true);
     setError(null);
@@ -123,7 +126,8 @@ export default function Shop() {
       type: selectedTypeSlug || undefined,
       search: debouncedSearch || undefined,
       sort,
-      page,
+      page: wantsGrouped ? 1 : page,
+      perPage: wantsGrouped ? 60 : 12,
       minPrice: debouncedMinPrice || undefined,
       maxPrice: debouncedMaxPrice || undefined,
       size: selectedSize || undefined,
@@ -138,7 +142,7 @@ export default function Shop() {
       })
       .catch(() => setError("Failed to load products. Check that the API is running."))
       .finally(() => setLoading(false));
-  }, [activeCategory, selectedTypeSlug, debouncedSearch, sort, debouncedMinPrice, debouncedMaxPrice, selectedSize, onSale, inStock]);
+  }, [activeCategory, selectedTypeSlug, debouncedSearch, sort, debouncedMinPrice, debouncedMaxPrice, selectedSize, onSale, inStock, wantsGrouped]);
 
   useEffect(() => {
     loadProducts(currentPage);
@@ -167,14 +171,134 @@ export default function Shop() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const shouldGroupByType = !!activeCategory && types.length > 0 && !selectedTypeSlug && !debouncedSearch;
+  interface CatalogSection {
+    id: string;
+    name: string;
+    subtitle?: string;
+    items: Product[];
+  }
 
-  const groupedSections = shouldGroupByType
+  // Auto-group sneakers cleanly by Brand: GOLDEN GOOSE, KOBE, MAISON MARGIELA, and more
+  const catalogSections: CatalogSection[] = useMemo(() => {
+    if (!wantsGrouped) return [];
+
+    const assignedIds = new Set<number>();
+
+    // 1. GOLDEN GOOSE
+    const goldenGooseItems = products.filter((p) => {
+      const typeSlug = p.product_type?.slug?.toLowerCase() || "";
+      const typeName = p.product_type?.name?.toLowerCase() || "";
+      const name = p.name.toLowerCase();
+      const match =
+        typeSlug.includes("golden") ||
+        typeName.includes("golden") ||
+        name.includes("golden goose") ||
+        name.includes("ball star") ||
+        name.includes("ball-star") ||
+        name.includes("super-star") ||
+        name.includes("superstar");
+      if (match) assignedIds.add(p.id);
+      return match;
+    });
+
+    // 2. KOBE
+    const kobeItems = products.filter((p) => {
+      if (assignedIds.has(p.id)) return false;
+      const typeSlug = p.product_type?.slug?.toLowerCase() || "";
+      const typeName = p.product_type?.name?.toLowerCase() || "";
+      const name = p.name.toLowerCase();
+      const match =
+        typeSlug.includes("kobe") ||
+        typeName.includes("kobe") ||
+        name.includes("kobe") ||
+        name.includes("mamba");
+      if (match) assignedIds.add(p.id);
+      return match;
+    });
+
+    // 3. MAISON MARGIELA
+    const margielaItems = products.filter((p) => {
+      if (assignedIds.has(p.id)) return false;
+      const typeSlug = p.product_type?.slug?.toLowerCase() || "";
+      const typeName = p.product_type?.name?.toLowerCase() || "";
+      const name = p.name.toLowerCase();
+      const match =
+        typeSlug.includes("margiela") ||
+        typeName.includes("margiela") ||
+        name.includes("margiela") ||
+        name.includes("replica");
+      if (match) assignedIds.add(p.id);
+      return match;
+    });
+
+    // 4. Other types from database (if any)
+    const otherTypeSections: CatalogSection[] = [];
+    types.forEach((t) => {
+      const itemsForType = products.filter((p) => {
+        if (assignedIds.has(p.id)) return false;
+        if (p.product_type_id === t.id || p.product_type?.slug === t.slug) {
+          assignedIds.add(p.id);
+          return true;
+        }
+        return false;
+      });
+      if (itemsForType.length > 0) {
+        otherTypeSections.push({
+          id: t.slug,
+          name: t.name.toUpperCase(),
+          items: itemsForType,
+        });
+      }
+    });
+
+    // 5. Any remaining items
+    const remainingItems = products.filter((p) => !assignedIds.has(p.id));
+
+    const sections: CatalogSection[] = [];
+    if (goldenGooseItems.length > 0) {
+      sections.push({
+        id: "golden-goose",
+        name: "GOLDEN GOOSE",
+        subtitle: "Venice Luxury Craft · Distressed Leather & Star Silhouettes",
+        items: goldenGooseItems,
+      });
+    }
+    if (kobeItems.length > 0) {
+      sections.push({
+        id: "kobe",
+        name: "KOBE",
+        subtitle: "Mamba Performance Series · High-Tier Basketball Silhouettes",
+        items: kobeItems,
+      });
+    }
+    if (margielaItems.length > 0) {
+      sections.push({
+        id: "maison-margiela",
+        name: "MAISON MARGIELA",
+        subtitle: "Replica GAT Collection · Premium Suede & Calfskin",
+        items: margielaItems,
+      });
+    }
+    sections.push(...otherTypeSections);
+    if (remainingItems.length > 0) {
+      sections.push({
+        id: "more-drops",
+        name: "MORE CURATED DROPS",
+        subtitle: "Exclusive Limited Editions & Signature Releases",
+        items: remainingItems,
+      });
+    }
+
+    return sections;
+  }, [wantsGrouped, products, types]);
+
+  // Non-sneaker categories with types (e.g. Bags, Watches)
+  const isOtherCategoryWithTypes = !!activeCategory && activeCategory !== "sneakers" && types.length > 0 && !selectedTypeSlug && !debouncedSearch;
+  const otherCategoryGrouped = isOtherCategoryWithTypes
     ? types
         .map((t) => ({ type: t, items: products.filter((p) => p.product_type_id === t.id) }))
         .filter((g) => g.items.length > 0)
     : [];
-  const untypedProducts = shouldGroupByType ? products.filter((p) => !p.product_type_id) : [];
 
   const renderProductGrid = (items: Product[]) => (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-10 md:gap-x-8 md:gap-y-14">
@@ -345,9 +469,49 @@ export default function Shop() {
           </div>
         ) : (
           <>
-            {shouldGroupByType ? (
+            {wantsGrouped && catalogSections.length > 0 ? (
+              <div className="flex flex-col gap-16 md:gap-20 mb-16">
+                {/* Clean Brand Navigation Quick-Jumps */}
+                {catalogSections.length > 1 && (
+                  <div className="flex items-center gap-2 overflow-x-auto pb-2 -mt-2 text-[11px] uppercase tracking-wider text-[#6B6B6B]">
+                    <span className="text-[#999] text-[10px] font-medium shrink-0 mr-1">Brand Showcase:</span>
+                    {catalogSections.map((s) => (
+                      <a
+                        key={s.id}
+                        href={`#section-${s.id}`}
+                        className="shrink-0 px-3.5 py-1.5 border border-[#EAEAEA] hover:border-black hover:text-black transition-colors bg-white font-medium"
+                      >
+                        {s.name} ({s.items.length})
+                      </a>
+                    ))}
+                  </div>
+                )}
+
+                {/* Brand Sections */}
+                {catalogSections.map((section) => (
+                  <section key={section.id} id={`section-${section.id}`} className="scroll-mt-24">
+                    <div className="flex flex-col sm:flex-row sm:items-baseline justify-between border-b border-[#EAEAEA] pb-3 mb-8">
+                      <div className="flex items-baseline gap-3">
+                        <h2 className="text-[20px] md:text-[22px] font-bold tracking-tight uppercase text-black">
+                          {section.name}
+                        </h2>
+                        <span className="text-[11px] font-mono tracking-wider text-[#6B6B6B] uppercase">
+                          ({section.items.length} {section.items.length === 1 ? "pair" : "pairs"})
+                        </span>
+                      </div>
+                      {section.subtitle && (
+                        <span className="text-[11px] text-[#888] tracking-wide mt-1 sm:mt-0 font-normal">
+                          {section.subtitle}
+                        </span>
+                      )}
+                    </div>
+                    {renderProductGrid(section.items)}
+                  </section>
+                ))}
+              </div>
+            ) : isOtherCategoryWithTypes && otherCategoryGrouped.length > 0 ? (
               <div className="flex flex-col gap-14 mb-14">
-                {groupedSections.map(({ type, items }) => (
+                {otherCategoryGrouped.map(({ type, items }) => (
                   <div key={type.id}>
                     <div className="flex items-center gap-3 mb-6">
                       <h2 className="text-[17px] font-semibold">{type.name}</h2>
@@ -358,24 +522,12 @@ export default function Shop() {
                     {renderProductGrid(items)}
                   </div>
                 ))}
-
-                {untypedProducts.length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-3 mb-6">
-                      <h2 className="text-[17px] font-semibold">Other {activeCategoryName}</h2>
-                      <span className="text-[11px] text-[#6B6B6B]">
-                        {untypedProducts.length} item{untypedProducts.length === 1 ? "" : "s"}
-                      </span>
-                    </div>
-                    {renderProductGrid(untypedProducts)}
-                  </div>
-                )}
               </div>
             ) : (
               <div className="mb-14">{renderProductGrid(products)}</div>
             )}
 
-            {lastPage > 1 && (
+            {!wantsGrouped && lastPage > 1 && (
               <div className="flex items-center justify-center gap-2">
                 <button
                   onClick={() => goToPage(currentPage - 1)}
