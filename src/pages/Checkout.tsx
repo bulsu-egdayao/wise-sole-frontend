@@ -84,8 +84,68 @@ async function compressReceiptImage(file: File): Promise<File> {
   });
 }
 
+function calculateLbcRate(provinceName: string): number {
+  const p = (provinceName || "").toLowerCase();
+  if (!p) return 150;
+  if (
+    p.includes("manila") ||
+    p.includes("ncr") ||
+    p.includes("quezon city") ||
+    p.includes("makati") ||
+    p.includes("taguig") ||
+    p.includes("pasig") ||
+    p.includes("pasay") ||
+    p.includes("paranaque") ||
+    p.includes("las pinas") ||
+    p.includes("muntinlupa") ||
+    p.includes("caloocan") ||
+    p.includes("malabon") ||
+    p.includes("navotas") ||
+    p.includes("valenzuela") ||
+    p.includes("marikina") ||
+    p.includes("mandaluyong") ||
+    p.includes("san juan") ||
+    p.includes("pateros")
+  ) {
+    return 150;
+  }
+  if (
+    p.includes("bulacan") ||
+    p.includes("pampanga") ||
+    p.includes("bataan") ||
+    p.includes("zambales") ||
+    p.includes("tarlac") ||
+    p.includes("nueva ecija")
+  ) {
+    return 165;
+  }
+  const luzonKeywords = [
+    "rizal", "cavite", "laguna", "batangas", "quezon", "pangasinan", "la union", "ilocos",
+    "benguet", "isabela", "cagayan", "nueva vizcaya", "quirino", "abra", "apayao", "ifugao",
+    "kalinga", "mountain province", "aurora", "camarines", "albay", "sorsogon", "catanduanes", "masbate",
+    "marinduque", "occidental mindoro", "oriental mindoro", "palawan", "romblon"
+  ];
+  if (luzonKeywords.some((k) => p.includes(k))) {
+    return 180;
+  }
+  const visayasKeywords = [
+    "cebu", "bohol", "iloilo", "leyte", "negros", "samar", "aklan", "antique", "capiz", "guimaras",
+    "biliran", "siquijor"
+  ];
+  if (visayasKeywords.some((k) => p.includes(k))) {
+    return 215;
+  }
+  // Mindanao & Island provinces
+  return 235;
+}
+
 export default function Checkout() {
-  const { items, subtotal, clearCart } = useCart();
+  const { items, clearSelectedItems } = useCart();
+  const checkoutItems = items.filter((item) => item.selected !== false);
+  const checkoutSubtotal = checkoutItems.reduce((sum, item) => {
+    const activePrice = item.salePrice && item.salePrice > 0 ? item.salePrice : item.price;
+    return sum + activePrice * item.quantity;
+  }, 0);
 
   // Form states
   const [customerName, setCustomerName] = useState("");
@@ -237,7 +297,7 @@ export default function Checkout() {
     setValidatingVoucher(true);
 
     try {
-      const result = await validateVoucher(voucherInput.trim(), subtotal);
+      const result = await validateVoucher(voucherInput.trim(), checkoutSubtotal);
       if (result.valid && result.discount_amount !== undefined) {
         setAppliedVoucher({
           code: result.code || voucherInput.toUpperCase(),
@@ -272,18 +332,19 @@ export default function Checkout() {
     }
   };
 
-  // COD orders automatically include ₱150 LBC Express shipping fee
+  // Free shipping for prepaid orders (GCash / MariBank); Dynamic LBC rate for Cash on Delivery
   const isCod = paymentMethod === "cod";
-  const shippingFee = isCod ? 150 : 0;
+  const estimatedLbcFee = calculateLbcRate(selectedProvince);
+  const shippingFee = isCod ? estimatedLbcFee : 0;
   const discountAmount = appliedVoucher ? appliedVoucher.discountAmount : 0;
-  const grandTotal = Math.max(0, subtotal - discountAmount + shippingFee);
+  const grandTotal = Math.max(0, checkoutSubtotal - discountAmount + shippingFee);
 
   const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitError(null);
 
-    if (items.length === 0) {
-      setSubmitError("Your shopping bag is empty.");
+    if (checkoutItems.length === 0) {
+      setSubmitError("No items selected for checkout. Please return to your shopping bag to select items.");
       return;
     }
 
@@ -331,7 +392,7 @@ export default function Checkout() {
       if (paymentReference.trim()) formData.append("payment_reference", paymentReference.trim());
       if (appliedVoucher) formData.append("voucher_code", appliedVoucher.code);
 
-      const itemsPayload = items.map((item) => ({
+      const itemsPayload = checkoutItems.map((item) => ({
         product_id: item.productId,
         product_name: item.name,
         size: item.size || null,
@@ -347,7 +408,7 @@ export default function Checkout() {
 
       const createdOrder = await createOrder(formData);
 
-      clearCart();
+      clearSelectedItems();
 
       window.location.href = `/track?order=${encodeURIComponent(createdOrder.order_number)}&placed=true`;
     } catch (err) {
@@ -359,7 +420,7 @@ export default function Checkout() {
   const selectCls =
     "w-full bg-[#F5F5F5] border border-[#EAEAEA] px-4 py-3 text-[14px] outline-none focus:border-black transition-colors appearance-none cursor-pointer";
 
-  if (items.length === 0) {
+  if (checkoutItems.length === 0) {
     return (
       <div className="min-h-screen bg-white">
         <SiteHeader />
@@ -389,9 +450,17 @@ export default function Checkout() {
       <SiteHeader />
 
       <main className="max-w-[1280px] mx-auto px-5 md:px-10 py-10 md:py-16">
-        <div className="mb-8">
-          <p className="text-[10px] tracking-[0.15em] uppercase text-[#6B6B6B] mb-1">Wise Sole Checkout</p>
-          <h1 className="text-[26px] md:text-[32px] font-semibold tracking-tight">Complete Your Order</h1>
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-[#EAEAEA] pb-6">
+          <div>
+            <p className="text-[10px] tracking-[0.15em] uppercase text-[#6B6B6B] mb-1">Wise Sole Checkout</p>
+            <h1 className="text-[26px] md:text-[32px] font-semibold tracking-tight">Complete Your Order</h1>
+          </div>
+          <a
+            href="/shop"
+            className="inline-flex items-center gap-2 text-[11px] tracking-[0.12em] uppercase text-[#6B6B6B] hover:text-black transition-colors border border-[#EAEAEA] px-4 py-2.5 self-start sm:self-auto hover:border-black"
+          >
+            ← Cancel &amp; Return to Shop
+          </a>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 md:gap-14 items-start">
@@ -627,7 +696,10 @@ export default function Checkout() {
                       </div>
                     </div>
 
-                    <div className="text-right">
+                    <div className="text-right flex items-center gap-2">
+                      <span className="text-[10px] tracking-wider uppercase text-green-700 bg-green-50 px-2 py-0.5 border border-green-200 font-semibold">
+                        Free Shipping
+                      </span>
                       <span className="text-[12px] md:text-[13px] font-medium tracking-[0.12em] uppercase text-black">
                         GCASH
                       </span>
@@ -787,7 +859,10 @@ export default function Checkout() {
                       </div>
                     </div>
 
-                    <div className="text-right">
+                    <div className="text-right flex items-center gap-2">
+                      <span className="text-[10px] tracking-wider uppercase text-green-700 bg-green-50 px-2 py-0.5 border border-green-200 font-semibold">
+                        Free Shipping
+                      </span>
                       <span className="text-[12px] md:text-[13px] font-medium tracking-[0.12em] uppercase text-black">
                         MARIBANK
                       </span>
@@ -951,7 +1026,10 @@ export default function Checkout() {
                       </div>
                     </div>
 
-                    <div className="text-right">
+                    <div className="text-right flex items-center gap-2">
+                      <span className="text-[10px] tracking-wider uppercase text-[#777] bg-[#F5F5F5] px-2 py-0.5 border border-[#EAEAEA] font-medium">
+                        + Shipping Fee
+                      </span>
                       <span className="text-[12px] md:text-[13px] font-medium tracking-[0.12em] uppercase text-black">
                         CASH ON DELIVERY
                       </span>
@@ -980,11 +1058,11 @@ export default function Checkout() {
 
                         <div className="p-3 bg-[#F9F9F9] border border-[#EAEAEA] space-y-1.5 text-[12px]">
                           <div className="flex justify-between items-center text-black font-semibold">
-                            <span>Standard LBC Shipping Fee:</span>
-                            <span className="text-black font-bold">₱150</span>
+                            <span>Estimated LBC Shipping Fee:</span>
+                            <span className="text-black font-bold">{peso(shippingFee)}</span>
                           </div>
                           <p className="text-[11px] text-[#767676] leading-relaxed">
-                            COD orders require shipping handling and are fulfilled nationwide via LBC Express. The ₱150 shipping fee is automatically included in your total.
+                            Estimated rate for standard ~1.2kg shoebox to <strong className="text-black">{selectedProvince || "your province"}</strong> via LBC Express. Official waybill and final weight verified upon branch drop-off.
                           </p>
                           <p className="text-[11px] text-green-700 font-medium">
                             ✓ No receipt screenshot or advance payment needed. Simply prepare exact cash on delivery day.
@@ -998,13 +1076,13 @@ export default function Checkout() {
               </div>
             </section>
 
-            {/* SUBMIT BUTTON */}
+            {/* SUBMIT BUTTON & CANCEL BUTTON */}
             <div>
               <button
                 type="button"
                 disabled={submitting}
                 onClick={handleSubmitOrder}
-                className="w-full bg-black text-white text-[13px] tracking-[0.15em] uppercase py-4 hover:bg-[#1a1a1a] transition-all hover:-translate-y-0.5 duration-200 disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg"
+                className="w-full bg-black text-white text-[13px] tracking-[0.15em] uppercase py-4 hover:bg-[#1a1a1a] transition-all hover:-translate-y-0.5 duration-200 disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg cursor-pointer"
               >
                 {submitting ? (
                   <>
@@ -1022,6 +1100,14 @@ export default function Checkout() {
                   </span>
                 )}
               </button>
+
+              <a
+                href="/shop"
+                className="w-full border border-[#EAEAEA] text-black text-[12px] tracking-[0.14em] uppercase py-3.5 hover:border-black transition-colors duration-200 text-center block mt-3"
+              >
+                Cancel Order &amp; Return to Shop
+              </a>
+
               <p className="text-[11px] text-center text-[#888] mt-3">
                 By placing this order, your reservation is secured and will be prepared for dispatch.
               </p>
@@ -1032,7 +1118,7 @@ export default function Checkout() {
           <div className="lg:col-span-5 sticky top-28 bg-[#FAFAFA] border border-[#EAEAEA] p-6 space-y-6">
             <div className="flex items-center justify-between border-b border-[#EAEAEA] pb-3">
               <h2 className="text-[14px] font-semibold tracking-[0.08em] uppercase">
-                Order Summary ({items.length})
+                Order Summary ({checkoutItems.length})
               </h2>
               {/* URGENCY BADGE */}
               <span className="text-[10px] font-semibold tracking-wider uppercase text-amber-700 bg-amber-50 px-2.5 py-1 border border-amber-200">
@@ -1042,7 +1128,7 @@ export default function Checkout() {
 
             {/* Items list */}
             <div className="space-y-4 max-h-[300px] overflow-y-auto pr-1 divide-y divide-[#EAEAEA]">
-              {items.map((item) => {
+              {checkoutItems.map((item) => {
                 const activePrice = item.salePrice && item.salePrice > 0 ? item.salePrice : item.price;
                 return (
                   <div key={item.id} className="pt-3 first:pt-0 flex gap-3 items-center">
@@ -1108,7 +1194,7 @@ export default function Checkout() {
             <div className="border-t border-[#EAEAEA] pt-4 space-y-2 text-[13px]">
               <div className="flex justify-between text-[#6B6B6B]">
                 <span>Subtotal</span>
-                <span className="text-black font-medium">{peso(subtotal)}</span>
+                <span className="text-black font-medium">{peso(checkoutSubtotal)}</span>
               </div>
 
               {appliedVoucher && (
@@ -1120,7 +1206,7 @@ export default function Checkout() {
 
               <div className="flex justify-between text-[#6B6B6B]">
                 <span>
-                  Shipping {paymentMethod === null ? "(Select payment)" : isCod ? "(LBC Express COD)" : "(Prepaid Promo)"}
+                  Shipping {paymentMethod === null ? "(Select payment)" : isCod ? `(LBC Express COD to ${selectedProvince || "Provincial"})` : "(Prepaid 100% Free Shipping)"}
                 </span>
                 <span className="text-black font-medium">
                   {paymentMethod === null ? "—" : shippingFee === 0 ? "FREE" : peso(shippingFee)}
@@ -1139,7 +1225,7 @@ export default function Checkout() {
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                 <polyline points="9 12 11 14 15 10" />
               </svg>
-              <span>100% Authentic Guaranteed. Direct delivery via accredited courier with real-time tracking.</span>
+              <span>Top Tier UA 1:1 Batch Guaranteed. Precision materials, complete accessories, and real-time tracking.</span>
             </div>
           </div>
         </div>

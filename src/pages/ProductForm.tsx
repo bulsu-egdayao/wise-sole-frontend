@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import type { Product, Category, ProductImage } from "../types/product";
 import { createProduct, updateProduct } from "../services/adminProducts";
 import type { ProductFormData, SizeFormRow } from "../services/adminProducts";
@@ -15,6 +15,25 @@ interface ProductFormProps {
 
 const API_URL = import.meta.env.VITE_API_URL as string;
 
+const GOLDEN_GOOSE_QC = "3 to 7 days of sending actual photos of your order";
+const GOLDEN_GOOSE_ETA = "7 to 14 days arrival";
+const GOLDEN_GOOSE_INCLUSIONS = [
+  "Golden Goose paperbag",
+  "Dust bag",
+  "Passport",
+  "Scannable NFC",
+  "Double boxed courier dispatch",
+].join("\n");
+
+const STANDARD_QC = "2 to 4 days of sending actual photos of your order (quality control photos)";
+const STANDARD_ETA = "5 to 12 days arrival";
+const STANDARD_INCLUSIONS = [
+  "High tier UA 1:1 batch matching exact design specifications",
+  "Original shoe box and protective packaging",
+  "Extra accessories and laces included",
+  "Double boxed courier dispatch",
+].join("\n");
+
 const emptyForm: ProductFormData = {
   name: "",
   description: "",
@@ -28,6 +47,9 @@ const emptyForm: ProductFormData = {
   is_available: true,
   is_featured: false,
   is_new: false,
+  qc_timeline: STANDARD_QC,
+  arrival_timeline: STANDARD_ETA,
+  packaging_inclusions: STANDARD_INCLUSIONS,
   sizes: [],
 };
 
@@ -105,6 +127,9 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
         is_available: product.is_available,
         is_featured: product.is_featured,
         is_new: product.is_new,
+        qc_timeline: product.qc_timeline ?? "",
+        arrival_timeline: product.arrival_timeline ?? "",
+        packaging_inclusions: product.packaging_inclusions ?? "",
         sizes: (product.sizes || []).map((s) => ({ size: s.size, stock: String(s.stock) })),
       });
       setShowAddon(!!product.addon_name);
@@ -120,6 +145,44 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
 
   const handleChange = (field: keyof ProductFormData, value: string | boolean) => {
     setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const applyTemplate = (type: "goldengoose" | "standard") => {
+    if (type === "goldengoose") {
+      setForm((prev) => ({
+        ...prev,
+        qc_timeline: GOLDEN_GOOSE_QC,
+        arrival_timeline: GOLDEN_GOOSE_ETA,
+        packaging_inclusions: GOLDEN_GOOSE_INCLUSIONS,
+      }));
+    } else {
+      setForm((prev) => ({
+        ...prev,
+        qc_timeline: STANDARD_QC,
+        arrival_timeline: STANDARD_ETA,
+        packaging_inclusions: STANDARD_INCLUSIONS,
+      }));
+    }
+  };
+
+  const handleNameChange = (val: string) => {
+    setForm((prev) => {
+      const isGG = val.toLowerCase().includes("golden goose");
+      const isDefault =
+        !prev.qc_timeline ||
+        prev.qc_timeline === STANDARD_QC ||
+        prev.qc_timeline === GOLDEN_GOOSE_QC;
+      if (isDefault) {
+        return {
+          ...prev,
+          name: val,
+          qc_timeline: isGG ? GOLDEN_GOOSE_QC : STANDARD_QC,
+          arrival_timeline: isGG ? GOLDEN_GOOSE_ETA : STANDARD_ETA,
+          packaging_inclusions: isGG ? GOLDEN_GOOSE_INCLUSIONS : STANDARD_INCLUSIONS,
+        };
+      }
+      return { ...prev, name: val };
+    });
   };
 
   // Shoe sizes 35–47 including half sizes (35, 35.5, 36, 36.5 ... 47)
@@ -359,7 +422,7 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
               <input
                 type="text"
                 value={form.name}
-                onChange={(e) => handleChange("name", e.target.value)}
+                onChange={(e) => handleNameChange(e.target.value)}
                 required
                 className="w-full bg-[#F5F5F5] border border-[#EAEAEA] px-4 py-3 text-[14px] outline-none focus:border-black transition-colors duration-200"
               />
@@ -739,6 +802,80 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
               </label>
             </div>
 
+            {/* ITEM CONDITION, TIMELINES & INCLUSIONS */}
+            <div className="border border-[#EAEAEA] p-5 bg-[#FAFAFA] space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#EAEAEA] pb-3">
+                <div>
+                  <h3 className="text-[12px] font-semibold tracking-wider uppercase text-black">
+                    Item Condition &amp; Packaging (Public Page Display)
+                  </h3>
+                  <p className="text-[11px] text-[#6B6B6B]">
+                    Customize QC timeline, arrival ETA, and inclusions shown to clients.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => applyTemplate("goldengoose")}
+                    className="text-[10px] tracking-wider uppercase px-2.5 py-1.5 bg-white border border-[#EAEAEA] hover:border-black transition-colors font-medium cursor-pointer"
+                  >
+                    ★ Golden Goose Template
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyTemplate("standard")}
+                    className="text-[10px] tracking-wider uppercase px-2.5 py-1.5 bg-white border border-[#EAEAEA] hover:border-black transition-colors font-medium cursor-pointer"
+                  >
+                    Standard Sneaker Template
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] tracking-[0.08em] uppercase text-[#6B6B6B] mb-1.5 font-medium">
+                    Actual QC Photos Timeline
+                  </label>
+                  <input
+                    type="text"
+                    value={form.qc_timeline}
+                    onChange={(e) => handleChange("qc_timeline", e.target.value)}
+                    placeholder="e.g. 3 to 7 days of sending actual photos of your order"
+                    className="w-full bg-white border border-[#EAEAEA] px-3.5 py-2.5 text-[13px] outline-none focus:border-black transition-colors"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] tracking-[0.08em] uppercase text-[#6B6B6B] mb-1.5 font-medium">
+                    Arrival Timeline (ETA)
+                  </label>
+                  <input
+                    type="text"
+                    value={form.arrival_timeline}
+                    onChange={(e) => handleChange("arrival_timeline", e.target.value)}
+                    placeholder="e.g. 7 to 14 days arrival"
+                    className="w-full bg-white border border-[#EAEAEA] px-3.5 py-2.5 text-[13px] outline-none focus:border-black transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] tracking-[0.08em] uppercase text-[#6B6B6B] mb-1.5 font-medium">
+                  Packaging &amp; Inclusions Checklist (One item per line)
+                </label>
+                <textarea
+                  value={form.packaging_inclusions}
+                  onChange={(e) => handleChange("packaging_inclusions", e.target.value)}
+                  rows={5}
+                  placeholder="Golden Goose paperbag&#10;Dust bag&#10;Passport&#10;Scannable NFC&#10;Double boxed courier dispatch"
+                  className="w-full bg-white border border-[#EAEAEA] p-3 text-[13px] outline-none focus:border-black transition-colors"
+                />
+                <p className="text-[11px] text-[#888] mt-1">
+                  Each line appears on the product detail page with an official green checkmark.
+                </p>
+              </div>
+            </div>
+
             <div>
               <label className="block text-[11px] tracking-[0.08em] uppercase text-[#6B6B6B] mb-1.5">
                 Product Images
@@ -849,7 +986,7 @@ export default function ProductForm({ product, onSaved, onCancel }: ProductFormP
                 />
               </label>
               <p className="text-[11px] text-[#6B6B6B] mt-1.5">
-                JPG, PNG, or WebP. Max 5MB each. New images upload after you save the product.
+                JPG, PNG, or WebP. Max 10MB each. New images upload after you save the product.
               </p>
             </div>
 

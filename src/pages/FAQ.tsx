@@ -2,7 +2,7 @@ import React, { useState, useMemo } from "react";
 import SiteHeader from "../components/SiteHeader";
 
 interface FAQItem {
-  category: "Ordering & ETA" | "Payment & COD" | "Shipping & Tracking" | "Authenticity & Care";
+  category: "Ordering & ETA" | "Payment & COD" | "Shipping & Tracking" | "UA 1:1 Quality & Care";
   question: string;
   answer: React.ReactNode;
 }
@@ -13,7 +13,7 @@ const FAQS: FAQItem[] = [
     question: "Are items on Wise Sole ready to ship or pre-order basis?",
     answer: (
       <>
-        Most items in our catalog are on a <strong>pre-order basis</strong>, sourced directly through certified distributor networks to guarantee 100% authenticity, optimal sizing, and brand-new condition. The standard estimated time of arrival (ETA) is <strong>7 to 14 business days</strong>, depending on the specific model, colorway, and size rarity.
+        Most items in our catalog are on a <strong>pre-order basis</strong>, sourced directly through verified factory batch channels to guarantee top tier UA 1:1 accuracy, optimal sizing, and brand new deadstock condition. The standard estimated time of arrival (ETA) is <strong>7 to 14 business days</strong>, depending on the specific model, colorway, and size rarity.
       </>
     ),
   },
@@ -58,7 +58,7 @@ const FAQS: FAQItem[] = [
     question: "How does Cash on Delivery (COD) via LBC work?",
     answer: (
       <>
-        When you choose <strong>Cash on Delivery</strong> at checkout, an automatic <strong>₱150 standard shipping fee</strong> is added to your order total. You do not need to upload a receipt or make an advance payment online. Our team will verify your contact details and dispatch your order nationwide via LBC Express. Simply prepare the exact cash amount upon delivery.
+        When you choose <strong>Cash on Delivery</strong> at checkout, an estimated <strong>LBC Express shipping fee</strong> (from ₱150 to ₱235 based on destination province for standard ~1.2kg pair) is calculated. You do not need to upload a receipt or make an advance payment online. Our team will verify your contact details and dispatch your order nationwide via LBC Express.
       </>
     ),
   },
@@ -67,7 +67,7 @@ const FAQS: FAQItem[] = [
     question: "Is shipping free for prepaid orders?",
     answer: (
       <>
-        Yes! As part of our ongoing special promotion, all prepaid orders paid via <strong>GCash</strong> or <strong>MariBank</strong> qualify for <strong>FREE Nationwide Delivery</strong>.
+        Yes! All prepaid orders paid in full via <strong>GCash</strong> or <strong>MariBank</strong> qualify for <strong>100% FREE Nationwide Delivery</strong> (₱0 shipping fee).
       </>
     ),
   },
@@ -98,11 +98,11 @@ const FAQS: FAQItem[] = [
     ),
   },
   {
-    category: "Authenticity & Care",
-    question: "Are your pairs 100% authentic?",
+    category: "UA 1:1 Quality & Care",
+    question: "What quality tier and batch are your sneakers?",
     answer: (
       <>
-        Guaranteed 100% authentic. Every pair is thoroughly inspected for material accuracy, factory tags, stitching precision, and verified SKU codes prior to release. We pride ourselves on transparent sourcing and a spotless reputation. View verified client feedback on our{" "}
+        We curate exclusively top tier <strong>UA (Unauthorized Authentic) 1:1 sneakers</strong>, hand-selecting high tier batches (e.g., PK, OG, LJR, GX, God batches) tailored per design and sneaker model. Every pair features exact material composition, true-to-silhouette mold, factory stitching, correct tags, and real comfort cushioning. View verified client feedback on our{" "}
         <a href="/legitimacy" className="underline font-medium hover:opacity-70">
           Legitimacy &amp; Proofs
         </a>{" "}
@@ -111,7 +111,7 @@ const FAQS: FAQItem[] = [
     ),
   },
   {
-    category: "Authenticity & Care",
+    category: "UA 1:1 Quality & Care",
     question: "How is my sneaker packaged during shipment?",
     answer: (
       <>
@@ -120,7 +120,7 @@ const FAQS: FAQItem[] = [
     ),
   },
   {
-    category: "Authenticity & Care",
+    category: "UA 1:1 Quality & Care",
     question: "Can I request a size exchange or return?",
     answer: (
       <>
@@ -130,7 +130,7 @@ const FAQS: FAQItem[] = [
   },
 ];
 
-const CATEGORIES = ["All", "Ordering & ETA", "Payment & COD", "Shipping & Tracking", "Authenticity & Care"] as const;
+const CATEGORIES = ["All", "Ordering & ETA", "Payment & COD", "Shipping & Tracking", "UA 1:1 Quality & Care"] as const;
 
 export default function FAQ() {
   const [activeCategory, setActiveCategory] = useState<string>("All");

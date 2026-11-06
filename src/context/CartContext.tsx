@@ -7,9 +7,14 @@ interface CartContextType {
   addToCart: (product: Product, size?: string | null, quantity?: number) => void;
   removeFromCart: (cartItemId: string) => void;
   updateQuantity: (cartItemId: string, quantity: number) => void;
+  toggleSelectItem: (cartItemId: string) => void;
+  selectAll: (selected: boolean) => void;
   clearCart: () => void;
+  clearSelectedItems: () => void;
   subtotal: number;
   count: number;
+  selectedCount: number;
+  allSelected: boolean;
   isCartOpen: boolean;
   openCart: () => void;
   closeCart: () => void;
@@ -24,7 +29,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>(() => {
     try {
       const saved = localStorage.getItem(CART_STORAGE_KEY);
-      return saved ? JSON.parse(saved) : [];
+      if (!saved) return [];
+      const parsed: CartItem[] = JSON.parse(saved);
+      // Ensure existing saved items default to selected: true if undefined
+      return parsed.map((item) => ({
+        ...item,
+        selected: item.selected !== false,
+      }));
     } catch {
       return [];
     }
@@ -57,7 +68,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       if (existing) {
         return prev.map((item) =>
           item.id === cartItemId
-            ? { ...item, quantity: item.quantity + quantity }
+            ? { ...item, quantity: item.quantity + quantity, selected: true }
             : item
         );
       }
@@ -73,6 +84,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           size: selectedSize,
           quantity,
           image: primaryImage,
+          selected: true,
         },
       ];
     });
@@ -96,16 +108,41 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     );
   };
 
+  const toggleSelectItem = (cartItemId: string) => {
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === cartItemId ? { ...item, selected: item.selected === false ? true : false } : item
+      )
+    );
+  };
+
+  const selectAll = (selected: boolean) => {
+    setItems((prev) => prev.map((item) => ({ ...item, selected })));
+  };
+
   const clearCart = () => {
     setItems([]);
   };
 
-  const subtotal = items.reduce((sum, item) => {
-    const activePrice = item.salePrice && item.salePrice > 0 ? item.salePrice : item.price;
-    return sum + activePrice * item.quantity;
-  }, 0);
+  const clearSelectedItems = () => {
+    setItems((prev) => prev.filter((item) => item.selected === false));
+  };
+
+  // Subtotal only calculates items selected for checkout
+  const subtotal = items
+    .filter((item) => item.selected !== false)
+    .reduce((sum, item) => {
+      const activePrice = item.salePrice && item.salePrice > 0 ? item.salePrice : item.price;
+      return sum + activePrice * item.quantity;
+    }, 0);
 
   const count = items.reduce((sum, item) => sum + item.quantity, 0);
+
+  const selectedCount = items
+    .filter((item) => item.selected !== false)
+    .reduce((sum, item) => sum + item.quantity, 0);
+
+  const allSelected = items.length > 0 && items.every((i) => i.selected !== false);
 
   return (
     <CartContext.Provider
@@ -114,9 +151,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         addToCart,
         removeFromCart,
         updateQuantity,
+        toggleSelectItem,
+        selectAll,
         clearCart,
+        clearSelectedItems,
         subtotal,
         count,
+        selectedCount,
+        allSelected,
         isCartOpen,
         openCart: () => setIsCartOpen(true),
         closeCart: () => setIsCartOpen(false),

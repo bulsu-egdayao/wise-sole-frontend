@@ -10,6 +10,7 @@ export interface CartItem {
   size?: string | null;
   quantity: number;
   image: string;
+  selected?: boolean;
 }
 
 export interface OrderItem {

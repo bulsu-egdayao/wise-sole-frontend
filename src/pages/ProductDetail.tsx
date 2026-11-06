@@ -328,30 +328,79 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
               </div>
             )}
 
-            {/* CONDITION & INCLUSIONS CHECKLIST (RECO #2) */}
-            <div className="mb-6 p-4 border border-[#EAEAEA] bg-[#FAFAFA] space-y-2 text-[12px]">
-              <p className="text-[10px] tracking-[0.15em] uppercase text-[#888] font-semibold mb-1">
-                Item Condition &amp; Packaging
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-black">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-green-600 font-bold">✓</span>
-                  <span>Condition: Brand New / Deadstock</span>
+            {/* CONDITION & INCLUSIONS CHECKLIST (DYNAMIC ADMIN CONTROLLED) */}
+            {(() => {
+              const isGG = (product.name || "").toLowerCase().includes("golden goose");
+              const qcText =
+                product.qc_timeline ||
+                (isGG
+                  ? "3 to 7 days of sending actual photos of your order"
+                  : "2 to 4 days of sending actual photos of your order (quality control photos)");
+              const etaText =
+                product.arrival_timeline ||
+                (isGG ? "7 to 14 days arrival" : "5 to 12 days arrival");
+
+              const rawInclusions = product.packaging_inclusions
+                ? product.packaging_inclusions.split("\n").map((s) => s.trim()).filter(Boolean)
+                : isGG
+                ? [
+                    "Golden Goose paperbag",
+                    "Dust bag",
+                    "Passport",
+                    "Scannable NFC",
+                    "Double boxed courier dispatch",
+                  ]
+                : [
+                    "High tier UA 1:1 batch matching exact design specifications",
+                    "Original shoe box and protective packaging",
+                    "Extra accessories and laces included",
+                    "Double boxed courier dispatch",
+                  ];
+
+              return (
+                <div className="mb-6 p-4 border border-[#EAEAEA] bg-[#FAFAFA] space-y-3 text-[12px]">
+                  <div className="flex items-center justify-between border-b border-[#EAEAEA] pb-2">
+                    <p className="text-[10px] tracking-[0.15em] uppercase text-[#888] font-semibold">
+                      Item Condition &amp; Packaging
+                    </p>
+                    <span className="text-[10px] uppercase tracking-wider text-[#666] bg-white px-2 py-0.5 border border-[#EAEAEA]">
+                      Pre-Order Spec
+                    </span>
+                  </div>
+
+                  {/* TIMELINES (QC PHOTOS & ARRIVAL) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-black bg-white p-3 border border-[#EAEAEA]">
+                    <div className="flex items-start gap-2">
+                      <span className="text-black font-semibold text-[13px]">📸</span>
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider text-[#888] font-medium">Actual Photos (QC)</p>
+                        <p className="text-[12px] font-medium">{qcText}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-black font-semibold text-[13px]">✈️</span>
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider text-[#888] font-medium">Estimated Arrival</p>
+                        <p className="text-[12px] font-medium">{etaText}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* INCLUSIONS LIST */}
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-[#888] font-medium mb-1.5">Package Inclusions</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-black">
+                      {rawInclusions.map((item, idx) => (
+                        <div key={idx} className="flex items-start gap-1.5">
+                          <span className="text-green-600 font-bold shrink-0">✓</span>
+                          <span>{item}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-green-600 font-bold">✓</span>
-                  <span>Original Box &amp; Packaging</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-green-600 font-bold">✓</span>
-                  <span>Extra Laces &amp; Accessories Included</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-green-600 font-bold">✓</span>
-                  <span>Accredited Courier Dispatch</span>
-                </div>
-              </div>
-            </div>
+              );
+            })()}
 
             {/* ADD TO SHOPPING BAG BUTTON */}
             <button
@@ -393,7 +442,7 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
 
             <div className="grid grid-cols-2 gap-2.5 mb-3">
               <a
-                href="https://m.me/61578547474371"
+                href="https://m.me/61556567025574"
                 target="_blank"
                 rel="noreferrer"
                 className="border border-[#EAEAEA] text-center text-[10px] tracking-[0.08em] uppercase py-3 hover:border-black transition-colors duration-200 flex items-center justify-center gap-1.5"
@@ -501,7 +550,7 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
           <div className="max-w-[1440px] mx-auto px-5 md:px-10 py-12 md:py-16">
             <div className="flex items-end justify-between mb-8">
               <div>
-                <p className="text-[10px] tracking-[0.15em] uppercase text-[#6B6B6B] mb-1">Authentic Community</p>
+                <p className="text-[10px] tracking-[0.15em] uppercase text-[#6B6B6B] mb-1">Verified Client Community</p>
                 <h2 className="text-[20px] md:text-[24px] font-semibold tracking-tight">Verified Buyer Vouches</h2>
               </div>
               <a

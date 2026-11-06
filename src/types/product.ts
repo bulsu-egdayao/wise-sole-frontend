@@ -42,6 +42,9 @@ export interface Product {
   is_available: boolean;
   is_featured: boolean;
   is_new: boolean;
+  qc_timeline?: string | null;
+  arrival_timeline?: string | null;
+  packaging_inclusions?: string | null;
   category: Category;
   product_type?: ProductType | null;
   images: ProductImage[];

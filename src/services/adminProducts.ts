@@ -29,6 +29,9 @@ export interface ProductFormData {
   is_available: boolean;
   is_featured: boolean;
   is_new: boolean;
+  qc_timeline: string;
+  arrival_timeline: string;
+  packaging_inclusions: string;
   sizes: SizeFormRow[];
 }
 
@@ -46,6 +49,9 @@ function serializeForm(form: ProductFormData) {
     is_available: form.is_available,
     is_featured: form.is_featured,
     is_new: form.is_new,
+    qc_timeline: form.qc_timeline?.trim() || null,
+    arrival_timeline: form.arrival_timeline?.trim() || null,
+    packaging_inclusions: form.packaging_inclusions?.trim() || null,
     sizes: form.sizes
       .filter((s) => s.size.trim() !== "")
       .map((s) => ({ size: s.size.trim(), stock: Number(s.stock) || 0 })),
@@ -98,7 +104,5 @@ export async function deleteProduct(id: number): Promise<void> {
     method: "DELETE",
     headers: authHeaders(),
   });
-  if (!res.ok) {
-    throw new Error("Failed to delete product");
-  }
+  if (!res.ok) throw new Error("Failed to delete product");
 }

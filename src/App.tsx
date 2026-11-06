@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { getFeaturedProducts, getNewArrivals, getCategories } from "./services/api";
 import type { Product, Category } from "./types/product";
 import ProductCard from "./components/ProductCard";
@@ -471,7 +471,7 @@ useEffect(() => {
                 <p className="text-[12px] text-white/50">0956 092 9925</p>
               </div>
             </a>
-            <a href="https://www.facebook.com/profile.php?id=61578547474371" target="_blank" rel="noreferrer" className="bg-black p-6 md:p-8 flex flex-col gap-4 hover:bg-white/5 transition-colors duration-200">
+            <a href="https://www.facebook.com/profile.php?id=61556567025574" target="_blank" rel="noreferrer" className="bg-black p-6 md:p-8 flex flex-col gap-4 hover:bg-white/5 transition-colors duration-200">
               <FacebookIcon className="w-5 h-5" />
               <div>
                 <p className="text-[13px] font-medium mb-0.5">Facebook</p>
@@ -538,7 +538,7 @@ useEffect(() => {
             <div>
               <p className="text-[11px] tracking-[0.1em] uppercase text-[#6B6B6B] mb-4">Follow</p>
               <div className="flex gap-3">
-                <a href="https://www.facebook.com/profile.php?id=61578547474371" target="_blank" rel="noreferrer" className="w-9 h-9 flex items-center justify-center border border-[#EAEAEA] hover:border-black transition-colors duration-200">
+                <a href="https://www.facebook.com/profile.php?id=61556567025574" target="_blank" rel="noreferrer" className="w-9 h-9 flex items-center justify-center border border-[#EAEAEA] hover:border-black transition-colors duration-200">
                   <FacebookIcon className="w-4 h-4" />
                 </a>
                 <a href="https://www.instagram.com/wisesole_/" target="_blank" rel="noreferrer" className="w-9 h-9 flex items-center justify-center border border-[#EAEAEA] hover:border-black transition-colors duration-200">
