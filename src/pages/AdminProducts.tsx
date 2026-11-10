@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import type { Product, Category } from "../types/product";
 import { getAllProductsAdmin, deleteProduct } from "../services/adminProducts";
+import { getProductTypes, type ProductType } from "../services/productTypes";
 import { getToken } from "../services/auth";
 import { useConfirm } from "../hooks/useConfirm";
 
@@ -20,12 +21,14 @@ const LOW_STOCK_THRESHOLD = 5;
 export default function AdminProducts({ onBack, onAddNew, onEdit }: AdminProductsProps) {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [allTypes, setAllTypes] = useState<ProductType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [sortOption, setSortOption] = useState<SortOption>("name_asc");
 
@@ -36,10 +39,12 @@ export default function AdminProducts({ onBack, onAddNew, onEdit }: AdminProduct
     Promise.all([
       getAllProductsAdmin(),
       fetch(`${API_URL}/categories`).then((r) => r.json()),
+      getProductTypes().catch(() => []),
     ])
-      .then(([productsData, categoriesData]) => {
+      .then(([productsData, categoriesData, typesData]) => {
         setProducts(productsData);
         setCategories(categoriesData || []);
+        setAllTypes(typesData || []);
       })
       .catch(() => setError("Failed to load products."))
       .finally(() => setLoading(false));
@@ -53,6 +58,38 @@ export default function AdminProducts({ onBack, onAddNew, onEdit }: AdminProduct
     loadProducts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Types available based on currently selected Category
+  const availableTypes = useMemo(() => {
+    if (categoryFilter === "all") {
+      return allTypes;
+    }
+    return allTypes.filter((t) => String(t.category_id) === categoryFilter);
+  }, [allTypes, categoryFilter]);
+
+  const handleCategoryChange = (newCat: string) => {
+    setCategoryFilter(newCat);
+    // If the currently selected type is not in the new category, reset type filter to all
+    if (newCat !== "all" && typeFilter !== "all") {
+      const stillBelongs = allTypes.some(
+        (t) => String(t.id) === typeFilter && String(t.category_id) === newCat
+      );
+      if (!stillBelongs) {
+        setTypeFilter("all");
+      }
+    }
+  };
+
+  const handleTypeChange = (newType: string) => {
+    setTypeFilter(newType);
+    // If user picks a type while category is "all", auto-select its category for consistency
+    if (newType !== "all" && categoryFilter === "all") {
+      const targetType = allTypes.find((t) => String(t.id) === newType);
+      if (targetType) {
+        setCategoryFilter(String(targetType.category_id));
+      }
+    }
+  };
 
   const handleDelete = async (product: Product) => {
     if (!(await confirm(`Delete "${product.name}"? This cannot be undone.`, { danger: true }))) return;
@@ -77,6 +114,52 @@ export default function AdminProducts({ onBack, onAddNew, onEdit }: AdminProduct
 
     if (categoryFilter !== "all") {
       result = result.filter((p) => String(p.category_id) === categoryFilter);
+    }
+
+    if (typeFilter !== "all") {
+      const selectedType = allTypes.find((t) => String(t.id) === typeFilter);
+      const targetName = selectedType?.name.toLowerCase() || "";
+      const targetSlug = selectedType?.slug.toLowerCase() || "";
+
+      result = result.filter((p) => {
+        // Direct match by ID
+        if (String(p.product_type_id) === typeFilter || String(p.product_type?.id) === typeFilter) {
+          return true;
+        }
+        // Match by slug
+        if (targetSlug && p.product_type?.slug?.toLowerCase() === targetSlug) {
+          return true;
+        }
+        // Match by type name in product name
+        if (targetName && p.name.toLowerCase().includes(targetName)) {
+          return true;
+        }
+        // Special brand aliases (e.g. Golden Goose, Kobe, Margiela)
+        if (targetName.includes("golden goose")) {
+          const lower = p.name.toLowerCase();
+          if (
+            lower.includes("ball star") ||
+            lower.includes("ball-star") ||
+            lower.includes("superstar") ||
+            lower.includes("super-star")
+          ) {
+            return true;
+          }
+        }
+        if (targetName.includes("margiela")) {
+          const lower = p.name.toLowerCase();
+          if (lower.includes("margiela") || lower.includes("replica")) {
+            return true;
+          }
+        }
+        if (targetName.includes("kobe")) {
+          const lower = p.name.toLowerCase();
+          if (lower.includes("kobe") || lower.includes("mamba")) {
+            return true;
+          }
+        }
+        return false;
+      });
     }
 
     if (statusFilter === "available") {
@@ -109,13 +192,15 @@ export default function AdminProducts({ onBack, onAddNew, onEdit }: AdminProduct
     });
 
     return result;
-  }, [products, search, categoryFilter, statusFilter, sortOption]);
+  }, [products, search, categoryFilter, typeFilter, allTypes, statusFilter, sortOption]);
 
-  const hasActiveFilters = search.trim() !== "" || categoryFilter !== "all" || statusFilter !== "all";
+  const hasActiveFilters =
+    search.trim() !== "" || categoryFilter !== "all" || typeFilter !== "all" || statusFilter !== "all";
 
   const clearFilters = () => {
     setSearch("");
     setCategoryFilter("all");
+    setTypeFilter("all");
     setStatusFilter("all");
   };
 
@@ -142,20 +227,21 @@ export default function AdminProducts({ onBack, onAddNew, onEdit }: AdminProduct
         <main className="max-w-[1200px] mx-auto px-6 py-10">
           {error && <p className="text-[13px] text-red-600 mb-6">{error}</p>}
 
-          {/* FILTER BAR — fixed widths on every control so nothing reflows when values change */}
-          <div className="flex flex-col md:flex-row gap-3 mb-6">
+          {/* FILTER BAR — Category & Type dynamically connected */}
+          <div className="flex flex-col md:flex-row gap-2.5 mb-6 flex-wrap items-center">
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search products…"
-              className="flex-1 min-w-0 bg-[#F5F5F5] border border-[#EAEAEA] px-4 py-2.5 text-[13px] outline-none focus:border-black transition-colors duration-200"
+              className="flex-1 min-w-[200px] w-full md:w-auto bg-[#F5F5F5] border border-[#EAEAEA] px-4 py-2.5 text-[13px] outline-none focus:border-black transition-colors duration-200"
             />
 
+            {/* Category Filter */}
             <select
               value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              className="w-full md:w-[170px] shrink-0 bg-[#F5F5F5] border border-[#EAEAEA] px-3 py-2.5 text-[13px] outline-none focus:border-black transition-colors duration-200"
+              onChange={(e) => handleCategoryChange(e.target.value)}
+              className="w-full md:w-[160px] shrink-0 bg-[#F5F5F5] border border-[#EAEAEA] px-3 py-2.5 text-[13px] outline-none focus:border-black transition-colors duration-200 font-medium"
             >
               <option value="all">All Categories</option>
               {categories.map((c) => (
@@ -165,10 +251,32 @@ export default function AdminProducts({ onBack, onAddNew, onEdit }: AdminProduct
               ))}
             </select>
 
+            {/* Product Type / Brand Filter (Connected to selected category) */}
+            <select
+              value={typeFilter}
+              onChange={(e) => handleTypeChange(e.target.value)}
+              className="w-full md:w-[190px] shrink-0 bg-[#F5F5F5] border border-[#EAEAEA] px-3 py-2.5 text-[13px] outline-none focus:border-black transition-colors duration-200 font-medium"
+            >
+              <option value="all">
+                {categoryFilter === "all"
+                  ? "All Types / Brands"
+                  : `All Types (${categories.find((c) => String(c.id) === categoryFilter)?.name || ""})`}
+              </option>
+              {availableTypes.map((t) => {
+                const catName = categories.find((c) => c.id === t.category_id)?.name;
+                return (
+                  <option key={t.id} value={t.id}>
+                    {t.name} {categoryFilter === "all" && catName ? `· ${catName}` : ""}
+                  </option>
+                );
+              })}
+            </select>
+
+            {/* Status Filter */}
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-              className="w-full md:w-[170px] shrink-0 bg-[#F5F5F5] border border-[#EAEAEA] px-3 py-2.5 text-[13px] outline-none focus:border-black transition-colors duration-200"
+              className="w-full md:w-[150px] shrink-0 bg-[#F5F5F5] border border-[#EAEAEA] px-3 py-2.5 text-[13px] outline-none focus:border-black transition-colors duration-200"
             >
               <option value="all">All Status</option>
               <option value="available">Available</option>
@@ -178,10 +286,11 @@ export default function AdminProducts({ onBack, onAddNew, onEdit }: AdminProduct
               <option value="new">New Arrivals</option>
             </select>
 
+            {/* Sort Filter */}
             <select
               value={sortOption}
               onChange={(e) => setSortOption(e.target.value as SortOption)}
-              className="w-full md:w-[170px] shrink-0 bg-[#F5F5F5] border border-[#EAEAEA] px-3 py-2.5 text-[13px] outline-none focus:border-black transition-colors duration-200"
+              className="w-full md:w-[160px] shrink-0 bg-[#F5F5F5] border border-[#EAEAEA] px-3 py-2.5 text-[13px] outline-none focus:border-black transition-colors duration-200"
             >
               <option value="name_asc">Name (A–Z)</option>
               <option value="price_asc">Price (Low–High)</option>
@@ -193,7 +302,7 @@ export default function AdminProducts({ onBack, onAddNew, onEdit }: AdminProduct
             <button
               onClick={clearFilters}
               disabled={!hasActiveFilters}
-              className={`w-full md:w-[110px] shrink-0 text-[11px] tracking-[0.08em] uppercase transition-colors duration-200 whitespace-nowrap px-2 ${
+              className={`w-full md:w-auto shrink-0 text-[11px] tracking-[0.08em] uppercase transition-colors duration-200 whitespace-nowrap px-3 py-2.5 ${
                 hasActiveFilters
                   ? "text-[#6B6B6B] hover:text-black cursor-pointer"
                   : "text-transparent cursor-default pointer-events-none"
@@ -206,6 +315,8 @@ export default function AdminProducts({ onBack, onAddNew, onEdit }: AdminProduct
           {!loading && (
             <p className="text-[11px] text-[#6B6B6B] mb-4">
               Showing {filteredProducts.length} of {products.length} product{products.length === 1 ? "" : "s"}
+              {categoryFilter !== "all" && ` in ${categories.find((c) => String(c.id) === categoryFilter)?.name}`}
+              {typeFilter !== "all" && ` · ${allTypes.find((t) => String(t.id) === typeFilter)?.name}`}
             </p>
           )}
 
@@ -217,9 +328,9 @@ export default function AdminProducts({ onBack, onAddNew, onEdit }: AdminProduct
             <p className="text-[13px] text-[#6B6B6B]">No products match these filters.</p>
           ) : (
             <div className="border border-[#EAEAEA]">
-              <div className="grid grid-cols-[1fr_120px_100px_100px_160px] gap-4 px-5 py-3 border-b border-[#EAEAEA] bg-[#F5F5F5] text-[10px] tracking-[0.1em] uppercase text-[#6B6B6B]">
+              <div className="grid grid-cols-[1fr_160px_100px_90px_150px] gap-4 px-5 py-3 border-b border-[#EAEAEA] bg-[#F5F5F5] text-[10px] tracking-[0.1em] uppercase text-[#6B6B6B]">
                 <span>Product</span>
-                <span>Category</span>
+                <span>Category &amp; Type</span>
                 <span>Price</span>
                 <span>Stock</span>
                 <span></span>
@@ -227,11 +338,11 @@ export default function AdminProducts({ onBack, onAddNew, onEdit }: AdminProduct
               {filteredProducts.map((p) => (
                 <div
                   key={p.id}
-                  className="grid grid-cols-[1fr_120px_100px_100px_160px] gap-4 px-5 py-4 border-b border-[#EAEAEA] last:border-b-0 items-center"
+                  className="grid grid-cols-[1fr_160px_100px_90px_150px] gap-4 px-5 py-4 border-b border-[#EAEAEA] last:border-b-0 items-center"
                 >
                   <div>
                     <p className="text-[13.5px] font-medium">{p.name}</p>
-                    <div className="flex gap-1.5 mt-1">
+                    <div className="flex gap-1.5 mt-1 flex-wrap">
                       {p.is_featured && (
                         <span className="text-[9px] tracking-[0.08em] uppercase bg-black text-white px-1.5 py-0.5">Featured</span>
                       )}
@@ -246,7 +357,23 @@ export default function AdminProducts({ onBack, onAddNew, onEdit }: AdminProduct
                       )}
                     </div>
                   </div>
-                  <span className="text-[13px] text-[#6B6B6B]">{p.category?.name}</span>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-[13px] text-black font-medium truncate">{p.category?.name || "—"}</span>
+                    {p.product_type?.name ? (
+                      <span className="text-[11px] text-[#6B6B6B] uppercase tracking-wider font-mono mt-0.5 truncate">
+                        {p.product_type.name}
+                      </span>
+                    ) : (
+                      (() => {
+                        const matched = allTypes.find((t) => p.name.toLowerCase().includes(t.name.toLowerCase()));
+                        return matched ? (
+                          <span className="text-[10px] text-[#888] uppercase tracking-wider italic mt-0.5 truncate">
+                            {matched.name}
+                          </span>
+                        ) : null;
+                      })()
+                    )}
+                  </div>
                   <span className="text-[13px]">₱{parseFloat(p.price).toLocaleString("en-PH")}</span>
                   <span className="text-[13px]">{p.stock}</span>
                   <div className="flex gap-3 justify-end">
