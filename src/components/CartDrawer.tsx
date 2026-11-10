@@ -1,5 +1,6 @@
 import React from "react";
 import { useCart } from "../context/CartContext";
+import LOGO_BLACK from "../assets/wise-sole-logo-transparent.png";
 
 function peso(val: number) {
   return "₱" + Math.round(val).toLocaleString("en-PH");
@@ -33,8 +34,9 @@ export default function CartDrawer() {
       {/* Drawer */}
       <div className="relative w-full max-w-[420px] bg-white h-full shadow-2xl flex flex-col z-10 transition-transform duration-300 ease-out">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-[#EAEAEA]">
+        <div className="flex items-center justify-between px-6 py-4.5 border-b border-[#EAEAEA]">
           <div className="flex items-center gap-2.5">
+            <img src={LOGO_BLACK} alt="Wise Sole" className="h-6 w-auto object-contain shrink-0" />
             <h2 className="text-[14px] font-semibold tracking-[0.08em] uppercase">Shopping Bag</h2>
             <span className="bg-black text-white text-[10px] px-2 py-0.5 rounded-full font-medium">
               {count}
