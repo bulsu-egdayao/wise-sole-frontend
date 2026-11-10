@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { getCurrentUser, logout as logoutRequest, getToken, clearToken } from "../services/auth";
 import type { AdminUser } from "../services/auth";
 import type { Product, Category } from "../types/product";
+import { getPaymentSettings, updatePaymentSettings } from "../services/orderApi";
 
 interface Inquiry {
   id: number;
@@ -81,6 +82,9 @@ export default function AdminDashboard({
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [vouches, setVouches] = useState<Vouch[]>([]);
   const [pendingOrdersCount, setPendingOrdersCount] = useState<number>(0);
+  const [codEnabled, setCodEnabled] = useState<boolean>(false);
+  const [togglingCod, setTogglingCod] = useState<boolean>(false);
+  const [codToast, setCodToast] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -97,6 +101,10 @@ export default function AdminDashboard({
         clearToken();
         onLogout();
       });
+
+    getPaymentSettings()
+      .then((settings) => setCodEnabled(!!settings.cod_enabled))
+      .catch(() => {});
 
     Promise.all([
       fetch(`${API_URL}/products?per_page=100`).then((r) => r.json()),
@@ -130,6 +138,25 @@ export default function AdminDashboard({
     if (token) await logoutRequest(token).catch(() => {});
     clearToken();
     onLogout();
+  };
+
+  const handleToggleCod = async () => {
+    setTogglingCod(true);
+    try {
+      const updated = await updatePaymentSettings({ cod_enabled: !codEnabled });
+      setCodEnabled(!!updated.cod_enabled);
+      setCodToast(
+        updated.cod_enabled
+          ? "✓ Cash on Delivery (COD) is now AVAILABLE on checkout."
+          : "✓ Cash on Delivery (COD) is now DISABLED on checkout."
+      );
+      setTimeout(() => setCodToast(null), 3500);
+    } catch {
+      setCodToast("Failed to update COD setting. Please try again.");
+      setTimeout(() => setCodToast(null), 3500);
+    } finally {
+      setTogglingCod(false);
+    }
   };
 
   const totalProducts = products.length;
@@ -197,6 +224,51 @@ export default function AdminDashboard({
 
       <main className="max-w-[1280px] mx-auto px-6 py-10">
         {error && <p className="text-[13px] text-red-600 mb-6">{error}</p>}
+
+        {codToast && (
+          <div className="mb-6 p-3 bg-black text-white text-[12px] flex items-center justify-between animate-in">
+            <span>{codToast}</span>
+            <button onClick={() => setCodToast(null)} className="text-white/60 hover:text-white">&times;</button>
+          </div>
+        )}
+
+        {/* QUICK SETTING: CASH ON DELIVERY STATUS */}
+        <div className="bg-[#FAFAFA] border border-[#EAEAEA] p-4 md:p-5 mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start sm:items-center gap-3.5">
+            <div className={`w-3.5 h-3.5 rounded-full shrink-0 mt-0.5 sm:mt-0 ${codEnabled ? "bg-green-500 shadow-xs" : "bg-[#BBB]"}`} />
+            <div>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <span className="text-[13px] font-bold uppercase tracking-wider text-black">
+                  Checkout Option: Cash on Delivery (COD)
+                </span>
+                <span className={`text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 border ${
+                  codEnabled
+                    ? "bg-green-50 text-green-700 border-green-200"
+                    : "bg-white text-[#777] border-[#DDD]"
+                }`}>
+                  {codEnabled ? "✓ Active & Available" : "✕ Disabled / Unavailable"}
+                </span>
+              </div>
+              <p className="text-[12px] text-[#6B6B6B] mt-0.5">
+                {codEnabled
+                  ? "Customers can currently choose Cash on Delivery at checkout."
+                  : "COD is disabled for the mean time. Only GCash and MariBank are accepted at checkout."}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            disabled={togglingCod}
+            onClick={handleToggleCod}
+            className={`px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.1em] border transition-colors whitespace-nowrap self-start sm:self-auto cursor-pointer ${
+              codEnabled
+                ? "bg-white text-red-700 border-red-300 hover:bg-red-50"
+                : "bg-black text-white border-black hover:bg-[#222]"
+            } disabled:opacity-50`}
+          >
+            {togglingCod ? "Updating…" : codEnabled ? "Disable COD for Now" : "Make COD Available"}
+          </button>
+        </div>
 
         {/* STATS TILES */}
         <div className="grid grid-cols-2 md:grid-cols-6 gap-3.5 mb-12">

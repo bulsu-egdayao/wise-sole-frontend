@@ -194,6 +194,7 @@ export default function Checkout() {
     maribank_name: "Ezekiel Dayao",
     maribank_qr_url: "https://res.cloudinary.com/xrsfekgk/image/upload/v1793934905/site/s6vb8vawxl8pm0c0v53l.jpg",
     shipping_note: "Standard delivery: 2-4 days Metro Manila/Bulacan, 4-7 days Provincial.",
+    cod_enabled: false,
   });
 
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -203,7 +204,12 @@ export default function Checkout() {
   // ─── Load payment settings ─────────────────────────────────────────────────
   useEffect(() => {
     getPaymentSettings()
-      .then(setPaymentSettings)
+      .then((settings) => {
+        setPaymentSettings(settings);
+        if (settings.cod_enabled === false) {
+          setPaymentMethod((prev) => (prev === "cod" ? null : prev));
+        }
+      })
       .catch((e) => console.warn("Using default payment settings:", e));
   }, []);
 
@@ -333,7 +339,7 @@ export default function Checkout() {
   };
 
   // Free shipping for prepaid orders (GCash / MariBank); Dynamic LBC rate for Cash on Delivery
-  const isCod = paymentMethod === "cod";
+  const isCod = paymentMethod === "cod" && !!paymentSettings.cod_enabled;
   const estimatedLbcFee = calculateLbcRate(selectedProvince);
   const shippingFee = isCod ? estimatedLbcFee : 0;
   const discountAmount = appliedVoucher ? appliedVoucher.discountAmount : 0;
@@ -364,7 +370,16 @@ export default function Checkout() {
     }
 
     if (!paymentMethod) {
-      setSubmitError("Please select your preferred Payment Method (GCash, MariBank, or Cash on Delivery).");
+      setSubmitError(
+        paymentSettings.cod_enabled
+          ? "Please select your preferred Payment Method (GCash, MariBank, or Cash on Delivery)."
+          : "Please select your preferred Payment Method (GCash or MariBank)."
+      );
+      return;
+    }
+
+    if (paymentMethod === "cod" && !paymentSettings.cod_enabled) {
+      setSubmitError("Cash on Delivery is temporarily unavailable. Please select GCash or MariBank.");
       return;
     }
 
@@ -985,76 +1000,96 @@ export default function Checkout() {
                 </div>
 
                 {/* ─── OPTION 3: CASH ON DELIVERY (COD) ─── */}
-                <div className="transition-colors">
-                  <div
-                    onClick={() => setPaymentMethod("cod")}
-                    className={`flex items-center justify-between p-4 cursor-pointer select-none transition-colors ${
-                      paymentMethod === "cod" ? "bg-[#FAFAFA]" : "hover:bg-[#FDFDFD]"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3.5">
-                      {/* H&M Custom Radio */}
-                      <div
-                        className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition-all ${
-                          paymentMethod === "cod" ? "border-black" : "border-[#BBB]"
-                        }`}
-                      >
-                        {paymentMethod === "cod" && <div className="w-2 h-2 rounded-full bg-black" />}
+                {paymentSettings.cod_enabled ? (
+                  <div className="transition-colors">
+                    <div
+                      onClick={() => setPaymentMethod("cod")}
+                      className={`flex items-center justify-between p-4 cursor-pointer select-none transition-colors ${
+                        paymentMethod === "cod" ? "bg-[#FAFAFA]" : "hover:bg-[#FDFDFD]"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3.5">
+                        {/* H&M Custom Radio */}
+                        <div
+                          className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition-all ${
+                            paymentMethod === "cod" ? "border-black" : "border-[#BBB]"
+                          }`}
+                        >
+                          {paymentMethod === "cod" && <div className="w-2 h-2 rounded-full bg-black" />}
+                        </div>
+
+                        {/* Minimalist COD Icon */}
+                        <div className="flex items-center gap-1.5 border border-black/80 px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase text-black">
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                            <rect x="2" y="5" width="20" height="14" rx="2" />
+                            <line x1="2" y1="10" x2="22" y2="10" />
+                          </svg>
+                          <span>CASH ON DELIVERY</span>
+                        </div>
                       </div>
 
-                      {/* Minimalist COD Icon */}
-                      <div className="flex items-center gap-1.5 border border-black/80 px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase text-black">
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <div className="text-right">
+                        <span className="text-[10px] tracking-wider uppercase text-[#666] bg-[#F5F5F5] px-2.5 py-1 border border-[#EAEAEA] font-medium">
+                          + Shipping Fee
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Expanded COD Accordion Body */}
+                    {paymentMethod === "cod" && (
+                      <div className="px-4 md:px-6 pb-6 pt-2 bg-[#FAFAFA] border-t border-[#EAEAEA] animate-in fade-in duration-200">
+                        <div className="p-4 md:p-6 bg-white border border-[#EAEAEA] space-y-3.5">
+                          <div className="flex items-start gap-3">
+                            <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center shrink-0 mt-0.5">
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                              </svg>
+                            </div>
+                            <div>
+                              <h3 className="text-[13px] font-bold uppercase tracking-wider text-black">
+                                LBC Express Cash on Delivery
+                              </h3>
+                              <p className="text-[12px] text-[#555] leading-relaxed mt-1">
+                                Pay in cash directly to the LBC courier upon delivery of your package to your doorstep.
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="p-3 bg-[#F9F9F9] border border-[#EAEAEA] space-y-1.5 text-[12px]">
+                            <div className="flex justify-between items-center text-black font-semibold">
+                              <span>Estimated LBC Shipping Fee:</span>
+                              <span className="text-black font-bold">{peso(shippingFee)}</span>
+                            </div>
+                            <p className="text-[11px] text-[#767676] leading-relaxed">
+                              Estimated rate for standard ~1.2kg shoebox to <strong className="text-black">{selectedProvince || "your province"}</strong> via LBC Express. Official waybill and final weight verified upon branch drop-off.
+                            </p>
+                            <p className="text-[11px] text-green-700 font-medium">
+                              ✓ No receipt screenshot or advance payment needed. Simply prepare exact cash on delivery day.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between p-4 bg-[#FAFAFA] select-none opacity-60 cursor-not-allowed">
+                    <div className="flex items-center gap-3.5">
+                      <div className="w-4 h-4 rounded-full border border-[#CCC] flex items-center justify-center shrink-0" />
+                      <div className="flex items-center gap-1.5 border border-[#DDD] px-2 py-0.5 text-[10px] font-semibold tracking-wider uppercase text-[#888]">
+                        <svg className="w-3.5 h-3.5 text-[#888]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                           <rect x="2" y="5" width="20" height="14" rx="2" />
                           <line x1="2" y1="10" x2="22" y2="10" />
                         </svg>
                         <span>CASH ON DELIVERY</span>
                       </div>
                     </div>
-
                     <div className="text-right">
-                      <span className="text-[10px] tracking-wider uppercase text-[#666] bg-[#F5F5F5] px-2.5 py-1 border border-[#EAEAEA] font-medium">
-                        + Shipping Fee
+                      <span className="text-[10px] tracking-wider uppercase text-[#777] bg-[#EAEAEA] px-2.5 py-1 font-medium">
+                        Temporarily Unavailable
                       </span>
                     </div>
                   </div>
-
-                  {/* Expanded COD Accordion Body */}
-                  {paymentMethod === "cod" && (
-                    <div className="px-4 md:px-6 pb-6 pt-2 bg-[#FAFAFA] border-t border-[#EAEAEA] animate-in fade-in duration-200">
-                      <div className="p-4 md:p-6 bg-white border border-[#EAEAEA] space-y-3.5">
-                        <div className="flex items-start gap-3">
-                          <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center shrink-0 mt-0.5">
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                            </svg>
-                          </div>
-                          <div>
-                            <h3 className="text-[13px] font-bold uppercase tracking-wider text-black">
-                              LBC Express Cash on Delivery
-                            </h3>
-                            <p className="text-[12px] text-[#555] leading-relaxed mt-1">
-                              Pay in cash directly to the LBC courier upon delivery of your package to your doorstep.
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="p-3 bg-[#F9F9F9] border border-[#EAEAEA] space-y-1.5 text-[12px]">
-                          <div className="flex justify-between items-center text-black font-semibold">
-                            <span>Estimated LBC Shipping Fee:</span>
-                            <span className="text-black font-bold">{peso(shippingFee)}</span>
-                          </div>
-                          <p className="text-[11px] text-[#767676] leading-relaxed">
-                            Estimated rate for standard ~1.2kg shoebox to <strong className="text-black">{selectedProvince || "your province"}</strong> via LBC Express. Official waybill and final weight verified upon branch drop-off.
-                          </p>
-                          <p className="text-[11px] text-green-700 font-medium">
-                            ✓ No receipt screenshot or advance payment needed. Simply prepare exact cash on delivery day.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                )}
 
               </div>
             </section>

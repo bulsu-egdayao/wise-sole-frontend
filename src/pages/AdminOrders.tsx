@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { getAdminOrders, updateOrderStatus, deleteOrder } from "../services/orderApi";
+import { getAdminOrders, updateOrderStatus, deleteOrder, getPaymentSettings, updatePaymentSettings } from "../services/orderApi";
 import type { Order, OrderStatus } from "../types/order";
 
 function peso(val: number) {
@@ -28,6 +28,35 @@ export default function AdminOrders({ onBack }: AdminOrdersProps) {
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [codEnabled, setCodEnabled] = useState<boolean>(false);
+  const [togglingCod, setTogglingCod] = useState<boolean>(false);
+
+  const loadCodSetting = () => {
+    getPaymentSettings()
+      .then((settings) => setCodEnabled(!!settings.cod_enabled))
+      .catch(() => {});
+  };
+
+  const handleToggleCod = async () => {
+    setTogglingCod(true);
+    try {
+      const updated = await updatePaymentSettings({ cod_enabled: !codEnabled });
+      setCodEnabled(!!updated.cod_enabled);
+      setToast({
+        type: "success",
+        message: updated.cod_enabled
+          ? "Cash on Delivery (COD) is now AVAILABLE on checkout."
+          : "Cash on Delivery (COD) is now DISABLED on checkout.",
+      });
+    } catch (err) {
+      setToast({
+        type: "error",
+        message: err instanceof Error ? err.message : "Failed to update COD setting",
+      });
+    } finally {
+      setTogglingCod(false);
+    }
+  };
 
   const loadOrders = async () => {
     setLoading(true);
@@ -45,6 +74,7 @@ export default function AdminOrders({ onBack }: AdminOrdersProps) {
 
   useEffect(() => {
     loadOrders();
+    loadCodSetting();
   }, [page, statusFilter]);
 
   useEffect(() => {
@@ -145,6 +175,45 @@ export default function AdminOrders({ onBack }: AdminOrdersProps) {
       </header>
 
       <main className="max-w-[1400px] mx-auto px-6 py-8">
+        {/* COD CHECKOUT TOGGLE BANNER */}
+        <div className="bg-white border border-[#EAEAEA] p-4 md:p-5 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs">
+          <div className="flex items-start sm:items-center gap-3.5">
+            <div className={`w-3.5 h-3.5 rounded-full shrink-0 mt-0.5 sm:mt-0 ${codEnabled ? "bg-green-500 shadow-xs" : "bg-[#BBB]"}`} />
+            <div>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <span className="text-[13px] font-bold uppercase tracking-wider text-black">
+                  Cash on Delivery (COD) Checkout Option
+                </span>
+                <span className={`text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 border ${
+                  codEnabled
+                    ? "bg-green-50 text-green-700 border-green-200"
+                    : "bg-[#F5F5F5] text-[#777] border-[#DDD]"
+                }`}>
+                  {codEnabled ? "✓ Active & Available" : "✕ Disabled / Unavailable"}
+                </span>
+              </div>
+              <p className="text-[12px] text-[#6B6B6B] mt-0.5">
+                {codEnabled
+                  ? "Customers can currently choose Cash on Delivery (LBC Express) during checkout."
+                  : "COD is currently hidden/unavailable on checkout. Customers are only able to pay via GCash or MariBank."}
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            disabled={togglingCod}
+            onClick={handleToggleCod}
+            className={`px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.1em] border transition-all duration-200 whitespace-nowrap self-start sm:self-auto cursor-pointer ${
+              codEnabled
+                ? "bg-white text-red-700 border-red-300 hover:bg-red-50"
+                : "bg-black text-white border-black hover:bg-[#222]"
+            } disabled:opacity-50`}
+          >
+            {togglingCod ? "Updating…" : codEnabled ? "Disable COD for Now" : "Make COD Available"}
+          </button>
+        </div>
+
         {/* FILTERS & SEARCH */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <div className="flex flex-wrap gap-1.5">

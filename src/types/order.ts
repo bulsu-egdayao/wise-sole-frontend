@@ -78,4 +78,5 @@ export interface PaymentSettings {
   maribank_name: string;
   maribank_qr_url?: string | null;
   shipping_note: string;
+  cod_enabled?: boolean;
 }
