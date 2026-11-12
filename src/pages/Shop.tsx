@@ -8,6 +8,7 @@ import QuickViewModal from "../components/QuickViewModal";
 import ProductFilters from "../components/ProductFilters";
 import { useFavorites } from "../hooks/useFavorites";
 import SiteHeader from "../components/SiteHeader";
+import BrandLogo from "../components/BrandLogo";
 
 const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: "newest", label: "Newest" },
@@ -473,15 +474,36 @@ export default function Shop() {
               <div className="flex flex-col gap-16 md:gap-20 mb-16">
                 {/* Clean Brand Navigation Quick-Jumps */}
                 {catalogSections.length > 1 && (
-                  <div className="flex items-center gap-2 overflow-x-auto pb-2 -mt-2 text-[11px] uppercase tracking-wider text-[#6B6B6B]">
-                    <span className="text-[#999] text-[10px] font-medium shrink-0 mr-1">Brand Showcase:</span>
+                  <div className="flex items-center gap-2.5 overflow-x-auto pb-3 -mt-2 text-[11px] uppercase tracking-wider text-[#6B6B6B]">
+                    <span className="text-[#999] text-[10px] font-semibold tracking-wider shrink-0 mr-1 uppercase">
+                      Brand Showcase:
+                    </span>
                     {catalogSections.map((s) => (
                       <a
                         key={s.id}
                         href={`#section-${s.id}`}
-                        className="shrink-0 px-3.5 py-1.5 border border-[#EAEAEA] hover:border-black hover:text-black transition-colors bg-white font-medium"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          const el = document.getElementById(`section-${s.id}`);
+                          if (el) {
+                            el.scrollIntoView({ behavior: "smooth", block: "start" });
+                          }
+                        }}
+                        className="group shrink-0 inline-flex items-center gap-2.5 px-3.5 py-2 border border-[#E5E5E5] hover:border-black bg-white hover:bg-neutral-50 active:scale-[0.98] transition-all duration-200 shadow-2xs hover:shadow-xs cursor-pointer select-none"
+                        title={`View ${s.name} collection`}
                       >
-                        {s.name} ({s.items.length})
+                        <div className="shrink-0 flex items-center justify-center w-4 h-4">
+                          <BrandLogo
+                            id={s.id}
+                            className="max-h-4 max-w-4 w-auto h-auto object-contain text-black transition-transform duration-200 group-hover:scale-110"
+                          />
+                        </div>
+                        <span className="text-[11px] font-semibold tracking-wider uppercase text-black">
+                          {s.name}
+                        </span>
+                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-600 group-hover:bg-neutral-200 group-hover:text-black transition-colors">
+                          {s.items.length}
+                        </span>
                       </a>
                     ))}
                   </div>
@@ -491,16 +513,24 @@ export default function Shop() {
                 {catalogSections.map((section) => (
                   <section key={section.id} id={`section-${section.id}`} className="scroll-mt-24">
                     <div className="flex flex-col sm:flex-row sm:items-baseline justify-between border-b border-[#EAEAEA] pb-3 mb-8">
-                      <div className="flex items-baseline gap-3">
-                        <h2 className="text-[20px] md:text-[22px] font-bold tracking-tight uppercase text-black">
-                          {section.name}
-                        </h2>
-                        <span className="text-[11px] font-mono tracking-wider text-[#6B6B6B] uppercase">
-                          ({section.items.length} {section.items.length === 1 ? "pair" : "pairs"})
-                        </span>
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full border border-neutral-200 bg-neutral-50 flex items-center justify-center p-1.5 shrink-0 shadow-2xs">
+                          <BrandLogo
+                            id={section.id}
+                            className="max-h-5 max-w-5 w-auto h-auto object-contain text-black"
+                          />
+                        </div>
+                        <div className="flex items-baseline gap-2.5">
+                          <h2 className="text-[20px] md:text-[22px] font-bold tracking-tight uppercase text-black">
+                            {section.name}
+                          </h2>
+                          <span className="text-[11px] font-mono tracking-wider text-[#6B6B6B] uppercase">
+                            ({section.items.length} {section.items.length === 1 ? "pair" : "pairs"})
+                          </span>
+                        </div>
                       </div>
                       {section.subtitle && (
-                        <span className="text-[11px] text-[#888] tracking-wide mt-1 sm:mt-0 font-normal">
+                        <span className="text-[11px] text-[#888] tracking-wide mt-2 sm:mt-0 font-normal">
                           {section.subtitle}
                         </span>
                       )}
